@@ -23,33 +23,27 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Rate Limiting Configuration
+    | Cache & Rate Limiting Configuration
     |--------------------------------------------------------------------------
     |
-    | Configure rate limiting settings for API requests
-    |
-    */
-    'rate_limiting' => [
-        'enabled' => env('ANTHROPIC_RATE_LIMITING_ENABLED', true),
-        'max_requests' => env('ANTHROPIC_RATE_LIMIT_MAX_REQUESTS', 60),
-        'decay_minutes' => env('ANTHROPIC_RATE_LIMIT_DECAY_MINUTES', 1),
-        'cache_driver' => env('ANTHROPIC_RATE_LIMIT_CACHE_DRIVER', 'redis'),
-    ],
-
-    /*
-    |--------------------------------------------------------------------------
-    | Cache Configuration
-    |--------------------------------------------------------------------------
-    |
-    | Configure caching settings for AI Assistants
+    | Configure caching and rate limiting settings for the package
     |
     */
     'cache' => [
+        // General cache settings
         'enabled' => env('ANTHROPIC_CACHE_ENABLED', true),
         'ttl' => env('ANTHROPIC_CACHE_TTL', 3600),
         'prefix' => env('ANTHROPIC_CACHE_PREFIX', 'anthropic:'),
         'store' => env('ANTHROPIC_CACHE_STORE', 'redis'),
         'tags_enabled' => env('ANTHROPIC_CACHE_TAGS_ENABLED', true),
+
+        // Rate limiting specific cache settings
+        'rate_limiting' => [
+            'enabled' => env('ANTHROPIC_RATE_LIMITING_ENABLED', true),
+            'max_requests' => env('ANTHROPIC_RATE_LIMIT_MAX_REQUESTS', 60),
+            'decay_minutes' => env('ANTHROPIC_RATE_LIMIT_DECAY_MINUTES', 1),
+            'key_prefix' => env('ANTHROPIC_RATE_LIMIT_PREFIX', 'anthropic:limit:'),
+        ],
     ],
 
     /*
@@ -134,14 +128,44 @@ return [
     | Validation Rules
     |--------------------------------------------------------------------------
     |
-    | Define validation rules for request parameters
+    | Define validation rules for request parameters and input data
     |
     */
     'validation' => [
+        // Content validation
         'max_prompt_length' => env('ANTHROPIC_MAX_PROMPT_LENGTH', 4000),
         'max_context_length' => env('ANTHROPIC_MAX_CONTEXT_LENGTH', 8000),
-        'allowed_mime_types' => ['text/plain', 'application/json', 'text/markdown'],
+        'min_prompt_length' => env('ANTHROPIC_MIN_PROMPT_LENGTH', 1),
+        'allowed_mime_types' => [
+            'text/plain',
+            'application/json',
+            'text/markdown',
+            'text/csv',
+            'application/xml',
+        ],
         'max_file_size' => env('ANTHROPIC_MAX_FILE_SIZE', 1024 * 1024), // 1MB
+
+        // Request validation
+        'request' => [
+            'max_retries' => env('ANTHROPIC_MAX_RETRIES', 3),
+            'timeout' => env('ANTHROPIC_REQUEST_TIMEOUT', 30),
+            'allowed_methods' => ['GET', 'POST'],
+            'required_headers' => ['X-Api-Key', 'Content-Type'],
+        ],
+
+        // Response validation
+        'response' => [
+            'max_size' => env('ANTHROPIC_MAX_RESPONSE_SIZE', 10 * 1024 * 1024), // 10MB
+            'allowed_formats' => ['json', 'text', 'stream'],
+            'timeout' => env('ANTHROPIC_RESPONSE_TIMEOUT', 60),
+        ],
+
+        // Security validation
+        'security' => [
+            'allowed_ips' => env('ANTHROPIC_ALLOWED_IPS', '*'),
+            'require_https' => env('ANTHROPIC_REQUIRE_HTTPS', true),
+            'api_key_pattern' => '/^sk-[a-zA-Z0-9]{32,}$/',
+        ],
     ],
 
     /*

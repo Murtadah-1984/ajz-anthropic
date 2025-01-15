@@ -8,19 +8,51 @@
 - Registers services, facades, and configurations
 - Handles package bootstrapping
 - Manages service container bindings
+- Configures middleware and events
+- Registers console commands
 
 ### Facades
-`src/Facades/AI.php`
-- Main facade for AI functionality
-- Provides static access to AI services
-- Handles method routing to appropriate services
-- Manages agent and session creation
-
 `src/Facades/Anthropic.php`
 - Core Anthropic API facade
-- Provides access to raw Anthropic API functionality
-- Handles API communication
-- Manages authentication and rate limiting
+- Provides static access to all services
+- Handles method routing to appropriate services
+- Manages API communication
+- Provides helper methods for common operations
+- Implements fluent interface for service access
+
+### Core Classes
+`src/Anthropic.php`
+- Main entry point for the package
+- Manages service instances
+- Handles dependency injection
+- Provides access to core services
+- Implements lazy loading of services
+
+### Interfaces
+`src/Contracts/AnthropicClaudeApiInterface.php`
+- Defines API communication contract
+- Specifies message handling methods
+- Manages configuration options
+
+`src/Contracts/AIManagerInterface.php`
+- Defines agent management contract
+- Specifies agent creation methods
+- Manages agent registration
+
+`src/Contracts/AIAssistantFactoryInterface.php`
+- Defines assistant creation contract
+- Specifies factory methods
+- Manages assistant types
+
+`src/Contracts/OrganizationManagementInterface.php`
+- Defines organization management contract
+- Specifies organization operations
+- Manages member handling
+
+`src/Contracts/WorkspaceInterface.php`
+- Defines workspace management contract
+- Specifies workspace operations
+- Manages workspace settings
 
 ## Agency System
 
@@ -118,6 +150,43 @@
 
 ## HTTP Components
 
+### Middleware
+`src/Http/Middleware/CacheAnthropicResponses.php`
+- Implements response caching
+- Manages cache keys
+- Handles cache invalidation
+- Configures cache headers
+
+`src/Http/Middleware/HandleAnthropicErrors.php`
+- Handles error scenarios
+- Implements error logging
+- Manages error responses
+- Sanitizes error details
+
+`src/Http/Middleware/LogAnthropicRequests.php`
+- Implements request logging
+- Manages log channels
+- Handles log formatting
+- Sanitizes sensitive data
+
+`src/Http/Middleware/RateLimitAnthropicRequests.php`
+- Implements rate limiting
+- Manages rate limit keys
+- Handles limit exceeded scenarios
+- Configures rate limit headers
+
+`src/Http/Middleware/TransformAnthropicResponse.php`
+- Transforms API responses
+- Implements response enveloping
+- Manages metadata inclusion
+- Handles response formatting
+
+`src/Http/Middleware/ValidateAnthropicConfig.php`
+- Validates configuration
+- Implements validation rules
+- Manages configuration requirements
+- Handles validation errors
+
 ### Controllers
 `src/Http/Controllers/API/V1/AIAssistantController.php`
 - Handles API endpoints
@@ -135,11 +204,32 @@
 ## Console Commands
 
 ### Agent Management
-`src/console/Commands/CreatePermanentAgentCommand.php`
-- Handles agent creation via CLI
-- Implements configuration validation
-- Manages file generation
-- Handles error scenarios
+`src/Console/Commands/ListAgentsCommand.php`
+- Lists available AI agents
+- Shows agent capabilities
+- Provides detailed agent info
+- Supports filtering options
+
+### Cache Management
+`src/Console/Commands/CacheCleanCommand.php`
+- Cleans cache entries
+- Manages cache tags
+- Handles cache drivers
+- Supports selective cleaning
+
+### API Management
+`src/Console/Commands/GenerateApiKeyCommand.php`
+- Generates API keys
+- Manages key expiration
+- Handles key scopes
+- Implements key validation
+
+### Monitoring
+`src/Console/Commands/MonitorUsageCommand.php`
+- Monitors API usage
+- Tracks rate limits
+- Generates usage reports
+- Supports data export
 
 ## Database
 

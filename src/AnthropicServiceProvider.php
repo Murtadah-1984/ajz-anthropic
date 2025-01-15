@@ -61,6 +61,31 @@ final class AnthropicServiceProvider extends ServiceProvider
             __DIR__.'/../config/anthropic.php', 'anthropic'
         );
 
+        $this->registerInterfaces();
+        $this->registerServices();
+        $this->registerFacade();
+    }
+
+    /**
+     * Register interface bindings.
+     */
+    protected function registerInterfaces(): void
+    {
+        // Bind API interfaces
+        $this->app->bind(AnthropicClaudeApiInterface::class, AnthropicClaudeApiService::class);
+        $this->app->bind(AIAssistantFactoryInterface::class, AIAssistantFactory::class);
+        $this->app->bind(AIManagerInterface::class, AIManager::class);
+
+        // Bind organization interfaces
+        $this->app->bind(WorkspaceInterface::class, WorkspaceService::class);
+        $this->app->bind(OrganizationManagementInterface::class, OrganizationManagementService::class);
+    }
+
+    /**
+     * Register service singletons.
+     */
+    protected function registerServices(): void
+    {
         // Register main services
         $this->app->singleton(AnthropicClaudeApiService::class, function ($app) {
             return new AnthropicClaudeApiService();
@@ -68,7 +93,7 @@ final class AnthropicServiceProvider extends ServiceProvider
 
         $this->app->singleton(AIAssistantFactory::class, function ($app) {
             return new AIAssistantFactory(
-                $app->make(AnthropicClaudeApiService::class)
+                $app->make(AnthropicClaudeApiInterface::class)
             );
         });
 
@@ -96,8 +121,13 @@ final class AnthropicServiceProvider extends ServiceProvider
         $this->app->singleton(ApiKeyService::class, function ($app) {
             return new ApiKeyService();
         });
+    }
 
-        // Register facade
+    /**
+     * Register the facade.
+     */
+    protected function registerFacade(): void
+    {
         $this->app->singleton('anthropic', function ($app) {
             return new Anthropic($app);
         });
@@ -111,6 +141,59 @@ final class AnthropicServiceProvider extends ServiceProvider
         $this->registerMiddleware();
         $this->registerPublishing();
         $this->registerRouteMiddleware();
+        $this->registerEvents();
+        $this->registerCommands();
+    }
+
+    /**
+     * Register event subscribers.
+     */
+    protected function registerEvents(): void
+    {
+        $events = $this->app->make('events');
+
+        // Register request lifecycle events
+        $events->listen(AnthropicRequestStarted::class, function ($event) {
+            // Log request start
+            $this->app->make('log')->info('Anthropic request started', [
+                'request' => $event->getRequest(),
+                'timestamp' => $event->getTimestamp(),
+            ]);
+        });
+
+        $events->listen(AnthropicRequestCompleted::class, function ($event) {
+            // Log request completion
+            $this->app->make('log')->info('Anthropic request completed', [
+                'request' => $event->getRequest(),
+                'response' => $event->getResponse(),
+                'duration' => $event->getDuration(),
+            ]);
+        });
+
+        $events->listen(AnthropicRequestFailed::class, function ($event) {
+            // Log request failure
+            $this->app->make('log')->error('Anthropic request failed', [
+                'request' => $event->getRequest(),
+                'error' => $event->getErrorMessage(),
+                'code' => $event->getErrorCode(),
+                'duration' => $event->getDuration(),
+            ]);
+        });
+    }
+
+    /**
+     * Register console commands.
+     */
+    protected function registerCommands(): void
+    {
+        if ($this->app->runningInConsole()) {
+            $this->commands([
+                CacheCleanCommand::class,
+                GenerateApiKeyCommand::class,
+                ListAgentsCommand::class,
+                MonitorUsageCommand::class,
+            ]);
+        }
     }
 
     /**

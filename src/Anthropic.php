@@ -1,111 +1,182 @@
 <?php
 
-declare(strict_types=1);
-
-/**
- * @OA\Schema(
- *     schema="Anthropic",
- *     title="Anthropic",
- *     description="Main Anthropic service class that provides access to various Anthropic API services"
- * )
- */
-
 namespace Ajz\Anthropic;
 
 use Illuminate\Contracts\Container\Container;
-use Ajz\Anthropic\Services\AnthropicClaudeApiService;
-use Ajz\Anthropic\Services\Anthropic\ApiKey\ApiKeyService;
-use Ajz\Anthropic\Services\Anthropic\Organization\{
-    WorkspaceService,
-    WorkspaceMemberService,
-    OrganizationManagementService,
-    OrganizationInviteService
+use Ajz\Anthropic\Contracts\{
+    AnthropicClaudeApiInterface,
+    AIManagerInterface,
+    AIAssistantFactoryInterface
 };
 
-final class Anthropic
+class Anthropic
 {
+    /**
+     * The container instance.
+     *
+     * @var Container
+     */
     protected Container $container;
 
+    /**
+     * The API service instance.
+     *
+     * @var AnthropicClaudeApiInterface|null
+     */
+    protected ?AnthropicClaudeApiInterface $api = null;
+
+    /**
+     * The AI manager instance.
+     *
+     * @var AIManagerInterface|null
+     */
+    protected ?AIManagerInterface $manager = null;
+
+    /**
+     * The assistant factory instance.
+     *
+     * @var AIAssistantFactoryInterface|null
+     */
+    protected ?AIAssistantFactoryInterface $factory = null;
+
+    /**
+     * Create a new Anthropic instance.
+     *
+     * @param Container $container
+     */
     public function __construct(Container $container)
     {
         $this->container = $container;
     }
 
     /**
-     * @OA\Property(
-     *     property="messages",
-     *     description="Access the Claude messaging API service",
-     *     type="object",
-     *     ref="#/components/schemas/AnthropicClaudeApiService"
-     * )
+     * Get the API service instance.
+     *
+     * @return AnthropicClaudeApiInterface
      */
-    public function messages()
+    public function api(): AnthropicClaudeApiInterface
     {
-        return $this->container->make(AnthropicClaudeApiService::class);
+        if (!$this->api) {
+            $this->api = $this->container->make(AnthropicClaudeApiInterface::class);
+        }
+
+        return $this->api;
     }
 
     /**
-     * @OA\Property(
-     *     property="workspaces",
-     *     description="Access the workspace management service",
-     *     type="object",
-     *     ref="#/components/schemas/WorkspaceService"
-     * )
+     * Get the AI manager instance.
+     *
+     * @return AIManagerInterface
      */
-    public function workspaces()
+    public function manager(): AIManagerInterface
     {
-        return $this->container->make(WorkspaceService::class);
+        if (!$this->manager) {
+            $this->manager = $this->container->make(AIManagerInterface::class);
+        }
+
+        return $this->manager;
     }
 
     /**
-     * @OA\Property(
-     *     property="workspaceMembers",
-     *     description="Access the workspace member management service",
-     *     type="object",
-     *     ref="#/components/schemas/WorkspaceMemberService"
-     * )
+     * Get the assistant factory instance.
+     *
+     * @return AIAssistantFactoryInterface
      */
-    public function workspaceMembers()
+    public function factory(): AIAssistantFactoryInterface
     {
-        return $this->container->make(WorkspaceMemberService::class);
+        if (!$this->factory) {
+            $this->factory = $this->container->make(AIAssistantFactoryInterface::class);
+        }
+
+        return $this->factory;
     }
 
     /**
-     * @OA\Property(
-     *     property="organization",
-     *     description="Access the organization management service",
-     *     type="object",
-     *     ref="#/components/schemas/OrganizationManagementService"
-     * )
+     * Send a message to Claude and get a response.
+     *
+     * @param string $message
+     * @param array $options
+     * @return array
      */
-    public function organization()
+    public function sendMessage(string $message, array $options = []): array
     {
-        return $this->container->make(OrganizationManagementService::class);
+        return $this->api()->sendMessage($message, $options);
     }
 
     /**
-     * @OA\Property(
-     *     property="invites",
-     *     description="Access the organization invite management service",
-     *     type="object",
-     *     ref="#/components/schemas/OrganizationInviteService"
-     * )
+     * Stream a response from Claude.
+     *
+     * @param string $message
+     * @param array $options
+     * @return \Generator
      */
-    public function invites()
+    public function streamMessage(string $message, array $options = []): \Generator
     {
-        return $this->container->make(OrganizationInviteService::class);
+        return $this->api()->streamMessage($message, $options);
     }
 
     /**
-     * @OA\Property(
-     *     property="apiKeys",
-     *     description="Access the API key management service",
-     *     type="object",
-     *     ref="#/components/schemas/ApiKeyService"
-     * )
+     * Create a new agent instance.
+     *
+     * @param string $type
+     * @param array $config
+     * @return object
      */
-    public function apiKeys()
+    public function createAgent(string $type, array $config = []): object
     {
-        return $this->container->make(ApiKeyService::class);
+        return $this->manager()->createAgent($type, $config);
+    }
+
+    /**
+     * Create a new assistant instance.
+     *
+     * @param array $config
+     * @return object
+     */
+    public function createAssistant(array $config = []): object
+    {
+        return $this->factory()->create($config);
+    }
+
+    /**
+     * Get the current API configuration.
+     *
+     * @return array
+     */
+    public function getConfig(): array
+    {
+        return $this->api()->getConfig();
+    }
+
+    /**
+     * Set API configuration options.
+     *
+     * @param array $config
+     * @return void
+     */
+    public function setConfig(array $config): void
+    {
+        $this->api()->setConfig($config);
+    }
+
+    /**
+     * Get the container instance.
+     *
+     * @return Container
+     */
+    public function getContainer(): Container
+    {
+        return $this->container;
+    }
+
+    /**
+     * Set the container instance.
+     *
+     * @param Container $container
+     * @return void
+     */
+    public function setContainer(Container $container): void
+    {
+        $this->container = $container;
     }
 }
