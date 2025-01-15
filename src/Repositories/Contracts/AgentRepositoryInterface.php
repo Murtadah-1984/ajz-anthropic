@@ -75,11 +75,97 @@ interface AgentRepositoryInterface
     public function findByCapability(string $capability): Collection;
 
     /**
-     * Get active agents.
+     * Get agent's current task.
      *
+     * @param int $id
+     * @return array|null
+     */
+    public function getCurrentTask(int $id): ?array;
+
+    /**
+     * Assign task to agent.
+     *
+     * @param int $id
+     * @param array $task
+     * @return bool
+     */
+    public function assignTask(int $id, array $task): bool;
+
+    /**
+     * Get agent's task history.
+     *
+     * @param int $id
      * @return Collection
      */
-    public function getActiveAgents(): Collection;
+    public function getTaskHistory(int $id): Collection;
+
+    /**
+     * Update agent's capabilities.
+     *
+     * @param int $id
+     * @param array $capabilities
+     * @return bool
+     */
+    public function updateCapabilities(int $id, array $capabilities): bool;
+
+    /**
+     * Get agent's capabilities.
+     *
+     * @param int $id
+     * @return array
+     */
+    public function getCapabilities(int $id): array;
+
+    /**
+     * Get agent's performance metrics.
+     *
+     * @param int $id
+     * @param string $timeframe
+     * @return array
+     */
+    public function getPerformanceMetrics(int $id, string $timeframe = 'daily'): array;
+
+    /**
+     * Get agent's active sessions.
+     *
+     * @param int $id
+     * @return Collection
+     */
+    public function getActiveSessions(int $id): Collection;
+
+    /**
+     * Connect agent to session.
+     *
+     * @param int $agentId
+     * @param int $sessionId
+     * @return bool
+     */
+    public function connectToSession(int $agentId, int $sessionId): bool;
+
+    /**
+     * Disconnect agent from session.
+     *
+     * @param int $agentId
+     * @param int $sessionId
+     * @return bool
+     */
+    public function disconnectFromSession(int $agentId, int $sessionId): bool;
+
+    /**
+     * Get available agent types.
+     *
+     * @return array
+     */
+    public function getAvailableTypes(): array;
+
+    /**
+     * Register new agent type.
+     *
+     * @param string $type
+     * @param array $configuration
+     * @return bool
+     */
+    public function registerType(string $type, array $configuration): bool;
 
     /**
      * Get agents by status.
@@ -90,17 +176,19 @@ interface AgentRepositoryInterface
     public function findByStatus(string $status): Collection;
 
     /**
-     * Get agent's current task.
+     * Update agent's state.
      *
-     * @param int $agentId
-     * @return array|null
-     */
-    public function getCurrentTask(int $agentId): ?array;
-
-    /**
-     * Assign task to agent.
-     *
-     * @param int $agentId
-     * @param array $task
+     * @param int $id
+     * @param array $state
      * @return bool
      */
+    public function updateState(int $id, array $state): bool;
+
+    /**
+     * Get agent's state.
+     *
+     * @param int $id
+     * @return array
+     */
+    public function getState(int $id): array;
+}

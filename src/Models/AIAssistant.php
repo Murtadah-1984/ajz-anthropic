@@ -1,95 +1,213 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Ajz\Anthropic\Models;
 
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 
-final class AIAssistant extends Model
+class AIAssistant extends BaseModel
 {
-    use HasFactory, SoftDeletes;
-
+    /**
+     * The attributes that are mass assignable.
+     *
+     * @var array
+     */
     protected $fillable = [
         'name',
-        'code',
-        'assistant_role_id',
-        'team_id',
-        'user_id',
-        'configuration',
-        'memory',
+        'type',
+        'model',
         'capabilities',
-        'is_personal',
-        'is_active'
+        'configuration',
+        'is_active',
+        'user_id',
+        'organization_id',
+        'metadata',
+        'last_used_at',
     ];
 
+    /**
+     * The attributes that should be cast.
+     *
+     * @var array
+     */
     protected $casts = [
-        'configuration' => 'array',
-        'memory' => 'array',
-        'capabilities' => 'array',
-        'is_personal' => 'boolean',
+        'capabilities' => 'json',
+        'configuration' => 'json',
+        'metadata' => 'json',
         'is_active' => 'boolean',
-        'last_interaction' => 'datetime'
+        'last_used_at' => 'datetime',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+        'deleted_at' => 'datetime',
     ];
 
-    public function role()
+    /**
+     * Get the model's validation rules.
+     *
+     * @return array
+     */
+    public static function validationRules(): array
     {
-        return $this->belongsTo(AssistantRole::class, 'assistant_role_id');
+        return [
+            'name' => ['required', 'string', 'max:255'],
+            'type' => ['required', 'string', 'max:50'],
+            'model' => ['required', 'string', 'max:100'],
+            'capabilities' => ['required', 'array'],
+            'configuration' => ['required', 'array'],
+            'is_active' => ['boolean'],
+            'user_id' => ['required', 'integer', 'exists:users,id'],
+            'organization_id' => ['required', 'integer', 'exists:organizations,id'],
+            'metadata' => ['array'],
+        ];
     }
 
-    public function team()
+    /**
+     * Get the model's searchable fields.
+     *
+     * @return array
+     */
+    public static function searchableFields(): array
     {
-        return $this->belongsTo(Team::class);
+        return [
+            'name',
+            'type',
+            'model',
+        ];
     }
 
-    public function user()
+    /**
+     * Get the model's filterable fields.
+     *
+     * @return array
+     */
+    public static function filterableFields(): array
     {
-        return $this->belongsTo(User::class);
+        return [
+            'type',
+            'model',
+            'is_active',
+            'user_id',
+            'organization_id',
+        ];
     }
 
-    public function conversations(): HasMany
+    /**
+     * Get the model's sortable fields.
+     *
+     * @return array
+     */
+    public static function sortableFields(): array
     {
-        return $this->hasMany(Conversation::class);
+        return [
+            'name',
+            'type',
+            'model',
+            'is_active',
+            'last_used_at',
+            'created_at',
+        ];
     }
 
-    public function delegatedTasks(): HasMany
+    /**
+     * Get the user that owns the assistant.
+     *
+     * @return BelongsTo
+     */
+    public function user(): BelongsTo
     {
-        return $this->hasMany(TaskDelegation::class, 'from_assistant_id');
+        return $this->belongsTo(config('auth.providers.users.model'));
     }
 
-    public function receivedTasks(): HasMany
+    /**
+     * Get the organization that owns the assistant.
+     *
+     * @return BelongsTo
+     */
+    public function organization(): BelongsTo
     {
-        return $this->hasMany(TaskDelegation::class, 'to_assistant_id');
+        return $this->belongsTo(config('anthropic.models.organization'));
     }
 
-    // Helper methods for capability checking
-    public function canHandle(string $taskType): bool
+    /**
+     * Get the assistant's sessions.
+     *
+     * @return HasMany
+     */
+    public function sessions(): HasMany
     {
-        return in_array($taskType, $this->capabilities['supported_tasks'] ?? []);
+        return $this->hasMany(Session::class);
     }
 
-    public function updateMemory(array $data): void
+    /**
+     * Get the assistant's training history.
+     *
+     * @return HasMany
+     */
+    public function trainingHistory(): HasMany
     {
-        $this->memory = array_merge($this->memory ?? [], $data);
-        $this->save();
+        return $this->hasMany(TrainingRecord::class);
     }
 
-    // Scopes
-    public function scopeActive($query)
+    /**
+     * Get all of the assistant's artifacts.
+     *
+     * @return MorphMany
+     */
+    public function artifacts(): MorphMany
     {
-        return $query->where('is_active', true);
+        return $this->morphMany(Artifact::class, 'artifactable');
     }
 
-    public function scopePersonal($query)
+    /**
+     * Get the assistant's performance metrics.
+     *
+     * @return HasMany
+     */
+    public function performanceMetrics(): HasMany
     {
-        return $query->where('is_personal', true);
+        return $this->hasMany(PerformanceMetric::class);
     }
 
-    public function scopeTeamAssistants($query)
+    /**
+     * Scope a query to only include assistants with specific capabilities.
+     *
+     * @param \Illuminate\Database\Eloquent\Builder $query
+     * @param array|string $capabilities
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    public function scopeWithCapabilities($query, array|string $capabilities)
     {
-        return $query->where('is_personal', false)->whereNotNull('team_id');
+        $capabilities = is_array($capabilities) ? $capabilities : [$capabilities];
+
+        return $query->where(function ($query) use ($capabilities) {
+            foreach ($capabilities as $capability) {
+                $query->whereJsonContains('capabilities', $capability);
+            }
+        });
+    }
+
+    /**
+     * Scope a query to only include recently used assistants.
+     *
+     * @param \Illuminate\Database\Eloquent\Builder $query
+     * @param int $days
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    public function scopeRecentlyUsed($query, int $days = 7)
+    {
+        return $query->whereNotNull('last_used_at')
+            ->where('last_used_at', '>=', now()->subDays($days));
+    }
+
+    /**
+     * Update the last used timestamp.
+     *
+     * @return bool
+     */
+    public function touch(): bool
+    {
+        $this->last_used_at = now();
+        return $this->save();
     }
 }

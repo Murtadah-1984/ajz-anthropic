@@ -1,3 +1,6 @@
+<?php
+
+namespace Ajz\Anthropic\AIAgents\Sessions;
 
 class DailyStandupSession extends BaseSession
 {

@@ -1,3 +1,7 @@
+<?php
+
+namespace Ajz\Anthropic\AIAgents\Sessions;
+
 class PlanningSession extends BaseSession
 {
     public function start(): void

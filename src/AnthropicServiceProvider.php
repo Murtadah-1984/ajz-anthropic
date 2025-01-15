@@ -25,6 +25,16 @@ use Illuminate\Contracts\Http\Kernel;
 use Illuminate\Routing\Router;
 use Ajz\Anthropic\Services\AnthropicClaudeApiService;
 use Ajz\Anthropic\Services\Agency\AIManager;
+use Ajz\Anthropic\Commands\{
+    GenerateApiKeyCommand,
+    ListAgentsCommand,
+    StartSessionCommand,
+    MonitorAgentsCommand,
+    ConfigurePackageCommand,
+    CacheCleanCommand,
+    CreatePermanentAgentCommand,
+    MonitorUsageCommand
+};
 use Ajz\Anthropic\Http\Middleware\{
     HandleAnthropicErrors,
     ValidateAnthropicConfig,
@@ -43,6 +53,19 @@ use Ajz\Anthropic\Services\Organization\{
 
 final class AnthropicServiceProvider extends ServiceProvider
 {
+    /**
+     * All of the package's commands.
+     *
+     * @var array<string>
+     */
+    protected $commands = [
+        GenerateApiKeyCommand::class,
+        ListAgentsCommand::class,
+        CreateAgentCommand::class,
+        StartSessionCommand::class,
+        MonitorAgentsCommand::class,
+        ConfigurePackageCommand::class,
+    ];
     /**
      * All of the container singletons that should be registered.
      *
@@ -143,6 +166,9 @@ final class AnthropicServiceProvider extends ServiceProvider
         $this->registerRouteMiddleware();
         $this->registerEvents();
         $this->registerCommands();
+        if ($this->app->runningInConsole()) {
+            $this->commands($this->commands);
+        }
     }
 
     /**
