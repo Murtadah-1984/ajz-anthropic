@@ -5,7 +5,8 @@
     "require": {
         "php": "^8.2",
         "illuminate/support": "*",
-        "illuminate/http": "*"
+        "illuminate/http": "*",
+        "pusher/pusher-php-server": "^7.2"
     },
     "require-dev": {
         "phpunit/phpunit": "^11.5",

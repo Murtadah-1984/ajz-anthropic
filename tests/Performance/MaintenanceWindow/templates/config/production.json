@@ -1,0 +1,207 @@
+{
+    "visualize": {
+        "outputDir": "./performance/prod/charts",
+        "defaultFormat": "html",
+        "chartSize": {
+            "width": 1200,
+            "height": 600
+        },
+        "autoRefresh": false,
+        "colors": {
+            "primary": "rgb(75, 192, 192)",
+            "secondary": "rgb(255, 99, 132)",
+            "tertiary": "rgb(153, 102, 255)",
+            "alert": "rgb(255, 0, 0)"
+        },
+        "tooltips": {
+            "enabled": true,
+            "detailed": false
+        },
+        "security": {
+            "sanitizeData": true,
+            "hideSecrets": true,
+            "redactPatterns": [
+                "password",
+                "token",
+                "key",
+                "secret"
+            ]
+        }
+    },
+    "analyze": {
+        "defaultType": "detailed",
+        "thresholds": {
+            "executionTime": 200,
+            "memoryUsage": 50,
+            "throughput": 2000,
+            "errorRate": 0.001,
+            "p95ResponseTime": 500,
+            "p99ResponseTime": 1000
+        },
+        "alerts": {
+            "enabled": true,
+            "performance": {
+                "warning": 0.7,
+                "critical": 0.8
+            },
+            "memory": {
+                "warning": 0.6,
+                "critical": 0.75
+            },
+            "notifications": {
+                "email": true,
+                "slack": true,
+                "pagerduty": true
+            }
+        },
+        "monitoring": {
+            "enabled": true,
+            "interval": 60,
+            "metrics": [
+                "cpu_usage",
+                "memory_usage",
+                "disk_io",
+                "network_io",
+                "error_rate",
+                "response_time"
+            ]
+        }
+    },
+    "watch": {
+        "interval": 30,
+        "autoGenerate": true,
+        "notifications": true,
+        "retention": {
+            "days": 90,
+            "maxFiles": 10000
+        },
+        "archival": {
+            "enabled": true,
+            "interval": "daily",
+            "destination": "s3",
+            "compression": true
+        }
+    },
+    "reporting": {
+        "format": "html",
+        "includeSystemInfo": true,
+        "includeTrends": true,
+        "includeDebugInfo": false,
+        "groupBy": "environment",
+        "metrics": [
+            "execution_time",
+            "memory_usage",
+            "throughput",
+            "time_complexity",
+            "memory_complexity",
+            "error_rate",
+            "availability",
+            "response_time_percentiles"
+        ],
+        "aggregation": {
+            "interval": "hourly",
+            "retentionPeriod": "90d",
+            "customMetrics": {
+                "apdex_score": true,
+                "error_budget": true,
+                "sla_compliance": true
+            }
+        }
+    },
+    "production": {
+        "monitoring": {
+            "enabled": true,
+            "prometheus": {
+                "enabled": true,
+                "endpoint": "/metrics",
+                "labels": {
+                    "environment": "production",
+                    "service": "maintenance-window"
+                }
+            },
+            "grafana": {
+                "enabled": true,
+                "dashboards": [
+                    "performance-overview",
+                    "error-tracking",
+                    "resource-usage"
+                ]
+            }
+        },
+        "alerting": {
+            "providers": {
+                "email": {
+                    "enabled": true,
+                    "recipients": ["ops@company.com"]
+                },
+                "slack": {
+                    "enabled": true,
+                    "channel": "#prod-alerts"
+                },
+                "pagerduty": {
+                    "enabled": true,
+                    "serviceKey": "PAGERDUTY_SERVICE_KEY"
+                }
+            },
+            "rules": {
+                "highLatency": {
+                    "threshold": 1000,
+                    "duration": "5m",
+                    "severity": "critical"
+                },
+                "errorSpike": {
+                    "threshold": 0.01,
+                    "duration": "1m",
+                    "severity": "critical"
+                },
+                "memoryUsage": {
+                    "threshold": 0.85,
+                    "duration": "10m",
+                    "severity": "warning"
+                }
+            }
+        }
+    },
+    "logging": {
+        "level": "info",
+        "file": "./logs/performance-prod.log",
+        "format": "json",
+        "rotation": {
+            "enabled": true,
+            "maxSize": "1G",
+            "maxFiles": 30
+        },
+        "categories": {
+            "performance": true,
+            "memory": true,
+            "security": true,
+            "availability": true
+        },
+        "exporters": {
+            "elasticsearch": {
+                "enabled": true,
+                "index": "performance-metrics"
+            },
+            "cloudwatch": {
+                "enabled": true,
+                "logGroup": "/prod/maintenance-window"
+            }
+        }
+    },
+    "security": {
+        "dataRetention": {
+            "enabled": true,
+            "duration": "90d",
+            "archival": true
+        },
+        "encryption": {
+            "enabled": true,
+            "algorithm": "AES-256-GCM"
+        },
+        "access": {
+            "requireAuth": true,
+            "roles": ["admin", "ops"],
+            "audit": true
+        }
+    }
+}

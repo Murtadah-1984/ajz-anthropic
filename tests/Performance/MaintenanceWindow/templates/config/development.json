@@ -1,0 +1,119 @@
+{
+    "visualize": {
+        "outputDir": "./performance/dev/charts",
+        "defaultFormat": "both",
+        "chartSize": {
+            "width": 800,
+            "height": 400
+        },
+        "autoRefresh": true,
+        "refreshInterval": 5,
+        "colors": {
+            "primary": "rgb(75, 192, 192)",
+            "secondary": "rgb(255, 99, 132)",
+            "tertiary": "rgb(153, 102, 255)",
+            "debug": "rgb(255, 159, 64)"
+        },
+        "debugOverlay": true,
+        "showGridLines": true,
+        "tooltips": {
+            "enabled": true,
+            "detailed": true
+        }
+    },
+    "analyze": {
+        "defaultType": "basic",
+        "thresholds": {
+            "executionTime": 1000,
+            "memoryUsage": 200,
+            "throughput": 500
+        },
+        "alerts": {
+            "enabled": false
+        },
+        "debug": {
+            "enabled": true,
+            "logLevel": "verbose",
+            "stackTraces": true,
+            "timings": true,
+            "memoryProfiling": true
+        }
+    },
+    "watch": {
+        "interval": 2,
+        "autoGenerate": true,
+        "notifications": true,
+        "retention": {
+            "days": 7,
+            "maxFiles": 100
+        },
+        "patterns": {
+            "include": ["*.json", "*.log"],
+            "exclude": ["*.tmp", "*.bak"]
+        }
+    },
+    "reporting": {
+        "format": "both",
+        "includeSystemInfo": true,
+        "includeTrends": true,
+        "includeDebugInfo": true,
+        "groupBy": "feature",
+        "debugInfo": {
+            "queries": true,
+            "cache": true,
+            "events": true,
+            "memory": true
+        },
+        "metrics": [
+            "execution_time",
+            "memory_usage",
+            "throughput",
+            "time_complexity",
+            "memory_complexity",
+            "query_count",
+            "cache_hits",
+            "event_count"
+        ]
+    },
+    "development": {
+        "hotReload": true,
+        "sourceMaps": true,
+        "verboseOutput": true,
+        "breakpoints": {
+            "enabled": true,
+            "conditions": {
+                "executionTime": 1000,
+                "memoryUsage": 200
+            }
+        },
+        "profiling": {
+            "enabled": true,
+            "sampling": {
+                "interval": 10,
+                "duration": 60
+            }
+        },
+        "testing": {
+            "parallelization": false,
+            "coverage": true,
+            "debugOutput": true
+        }
+    },
+    "logging": {
+        "level": "debug",
+        "file": "./logs/performance-dev.log",
+        "format": "detailed",
+        "rotation": {
+            "enabled": true,
+            "maxSize": "100M",
+            "maxFiles": 10
+        },
+        "categories": {
+            "performance": true,
+            "memory": true,
+            "queries": true,
+            "cache": true,
+            "events": true
+        }
+    }
+}
