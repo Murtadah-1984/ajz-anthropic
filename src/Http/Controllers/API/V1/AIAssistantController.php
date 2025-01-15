@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace App\Http\Controllers\API\V1;
+namespace Ajz\Anthropic\Http\Controllers\API\V1;
 
-use App\Http\Controllers\Controller;
-use App\Http\Resources\AIAssistantResource;
-use App\Http\Requests\CreateAIAssistantRequest;
-use App\Http\Requests\GenerateResponseRequest;
+use Ajz\Anthropic\Http\Controllers\Controller;
+use Ajz\Anthropic\Http\Resources\AIAssistantResource;
+use Ajz\Anthropic\Http\Requests\CreateAIAssistantRequest;
+use Ajz\Anthropic\Http\Requests\GenerateResponseRequest;
 use Ajz\Anthropic\Factories\AIAssistantFactory;
 use Ajz\Anthropic\DTOs\AssistantConfig;
 use Illuminate\Http\JsonResponse;

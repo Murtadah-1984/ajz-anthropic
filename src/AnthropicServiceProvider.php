@@ -22,6 +22,7 @@ namespace Ajz\Anthropic;
 
 use Illuminate\Support\ServiceProvider;
 use Ajz\Anthropic\Services\AnthropicClaudeApiService;
+use Ajz\Anthropic\Services\Agency\AIManager;
 use Ajz\Anthropic\Services\Organization\{
     WorkspaceService,
     WorkspaceMemberService,
@@ -47,6 +48,12 @@ final class AnthropicServiceProvider extends ServiceProvider
             return new AIAssistantFactory(
                 $app->make(AnthropicClaudeApiService::class)
             );
+        });
+
+        $this->app->singleton(AgentMessageBroker::class);
+
+        $this->app->singleton(AIManager::class, function ($app) {
+            return new AIManager($app->make(AgentMessageBroker::class));
         });
 
         // Register organization services

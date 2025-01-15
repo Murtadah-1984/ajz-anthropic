@@ -54,4 +54,31 @@ return [
         'enabled' => env('AI_ASSISTANT_LOGGING_ENABLED', true),
         'channel' => env('AI_ASSISTANT_LOG_CHANNEL', 'stack'),
     ],
+
+    'agents' => [
+        'developer' => [
+            'class' => \App\AIAgents\Specialized\DeveloperAgent::class,
+            'capabilities' => ['code_generation', 'debugging', 'review'],
+        ],
+        'architect' => [
+            'class' => \App\AIAgents\Specialized\ArchitectAgent::class,
+            'capabilities' => ['system_design', 'architecture_review'],
+        ],
+        'security' => [
+            'class' => \App\AIAgents\Specialized\SecurityAgent::class,
+            'capabilities' => ['security_analysis', 'vulnerability_assessment'],
+        ],
+    ],
+
+    'teams' => [
+        'development' => [
+            'class' => \App\AIAgents\Teams\DevelopmentTeam::class,
+            'agents' => ['developer', 'architect', 'security'],
+        ],
+    ],
+
+    'cache' => [
+        'ttl' => 3600,
+        'prefix' => 'ai_',
+    ]
 ];
