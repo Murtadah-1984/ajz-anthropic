@@ -1,169 +1,177 @@
 <?php
 
+declare(strict_types=1);
+
+/**
+ * @OA\Schema(
+ *     schema="AnthropicClaudeApiService",
+ *     title="Anthropic Claude API Service",
+ *     description="Service for interacting with Claude AI models"
+ * )
+ */
+
 namespace Ajz\Anthropic\Services;
 
-use Ajz\Anthropic\Services\Anthropic\{Message, Tool, ImageContent, ToolResult};
-use Ajz\Anthropic\Services\Anthropic\Streaming\{
-    StreamEvent,
-    MessageStartEvent,
-    ContentBlockStartEvent,
-    ContentBlockDeltaEvent,
-    ContentBlockStopEvent,
-    MessageDeltaEvent,
-    MessageStopEvent,
-    ErrorEvent
-};
-
-use Illuminate\Support\Facades\Http;
-use Illuminate\Http\Client\Response;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Config;
-use Generator;
+use Illuminate\Support\Facades\Log;
 
-final class AnthropicClaudeApiService extends ModelService
+final class AnthropicClaudeApiService extends BaseAnthropicService
 {
+    public function __construct()
+    {
+        parent::__construct();
+        $this->apiKey = Config::get('anthropic.api_key');
+    }
+
     /**
-     * Create a streaming message response
+     * Create a message using Claude
+     *
+     * @OA\Post(
+     *     path="/messages",
+     *     summary="Create a message using Claude",
+     *     @OA\Parameter(
+     *         name="model",
+     *         in="query",
+     *         description="Claude model to use",
+     *         required=true,
+     *         @OA\Schema(type="string")
+     *     ),
+     *     @OA\Parameter(
+     *         name="messages",
+     *         in="query",
+     *         description="Messages to send",
+     *         required=true,
+     *         @OA\Schema(type="array", @OA\Items(type="object"))
+     *     ),
+     *     @OA\Parameter(
+     *         name="maxTokens",
+     *         in="query",
+     *         description="Maximum tokens to generate",
+     *         required=false,
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Successful response",
+     *         @OA\JsonContent(type="object")
+     *     )
+     * )
      *
      * @param string $model
      * @param array $messages
-     * @param array $options
-     * @return Generator|StreamEvent[]
-     * @throws AnthropicException
+     * @param int $maxTokens
+     * @return array
+     * @throws \Exception
      */
-    public function streamMessage(
-        string $model = 'claude-3-5-sonnet-20241022',
+    public function createMessage(
+        string $model = 'claude-3-sonnet-20240229',
         array $messages = [],
-        array $options = []
-    ): Generator {
+        int $maxTokens = 1024,
+        ?array $options = null
+    ): array {
         try {
-            $payload = array_merge([
+            $payload = array_filter([
                 'model' => $model,
-                'max_tokens' => $options['max_tokens'] ?? 1024,
+                'max_tokens' => $maxTokens,
                 'messages' => $messages,
-                'stream' => true,
-            ], $this->filterOptions($options));
+                'temperature' => $options['temperature'] ?? null,
+                'top_p' => $options['top_p'] ?? null,
+                'top_k' => $options['top_k'] ?? null,
+                'stream' => $options['stream'] ?? false,
+                'system' => $options['system'] ?? null,
+                'metadata' => $options['metadata'] ?? null,
+            ], function ($value) {
+                return !is_null($value);
+            });
 
             $response = $this->getHttpClient()
-                ->withOptions(['stream' => true])
                 ->post("{$this->baseUrl}/messages", $payload);
 
-            if ($response->status() !== 200) {
-                $this->handleResponse($response);
-            }
-
-            $buffer = '';
-            $currentTextContent = '';
-            $currentJsonContent = '';
-
-            foreach ($this->parseSSEResponse($response) as $event) {
-                yield $this->processStreamEvent($event);
-
-                if ($event instanceof ContentBlockDeltaEvent) {
-                    if ($event->isTextDelta()) {
-                        $currentTextContent .= $event->getText();
-                    } elseif ($event->isInputJsonDelta()) {
-                        $currentJsonContent .= $event->getPartialJson();
-                    }
-                }
-
-                if ($event instanceof ContentBlockStopEvent) {
-                    // Reset accumulators after block stop
-                    $currentTextContent = '';
-                    $currentJsonContent = '';
-                }
-            }
-        } catch (AnthropicException $e) {
-            throw $e;
+            return $this->handleResponse($response);
         } catch (\Exception $e) {
-            throw new ApiException($e->getMessage());
+            if ($e instanceof \Ajz\Anthropic\Exceptions\AnthropicException) {
+                throw $e;
+            }
+            Log::error('Anthropic API Error: ' . $e->getMessage(), [
+                'model' => $model,
+                'exception' => get_class($e)
+            ]);
+            throw new \Ajz\Anthropic\Exceptions\ApiException(
+                'Failed to create message: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
         }
     }
 
     /**
-     * Parse SSE response into events
+     * List all available models
      *
-     * @param Response $response
-     * @return Generator
+     * @OA\Get(
+     *     path="/models",
+     *     summary="List all available Claude models",
+     *     @OA\Response(
+     *         response=200,
+     *         description="Successful response",
+     *         @OA\JsonContent(
+     *             type="array",
+     *             @OA\Items(type="object")
+     *         )
+     *     )
+     * )
+     *
+     * @return array
+     * @throws \Exception
      */
-    protected function parseSSEResponse(Response $response): Generator
+    public function listModels(): array
     {
-        $buffer = '';
+        try {
+            $response = $this->getHttpClient()
+                ->get("{$this->baseUrl}/models");
 
-        foreach ($response->getBody() as $chunk) {
-            $buffer .= $chunk;
-
-            while (($pos = strpos($buffer, "\n\n")) !== false) {
-                $event = substr($buffer, 0, $pos);
-                $buffer = substr($buffer, $pos + 2);
-
-                $eventData = $this->parseSSEEvent($event);
-                if ($eventData) {
-                    yield $eventData;
-                }
+            return $this->handleResponse($response);
+        } catch (\Exception $e) {
+            if ($e instanceof \Ajz\Anthropic\Exceptions\AnthropicException) {
+                throw $e;
             }
-        }
-
-        if (!empty($buffer)) {
-            $eventData = $this->parseSSEEvent($buffer);
-            if ($eventData) {
-                yield $eventData;
-            }
+            Log::error('Anthropic API Error: ' . $e->getMessage(), [
+                'exception' => get_class($e)
+            ]);
+            throw new \Ajz\Anthropic\Exceptions\ApiException(
+                'Failed to list models: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
         }
     }
 
     /**
-     * Parse a single SSE event
+     * Get model details
      *
-     * @param string $event
-     * @return StreamEvent|null
+     * @param string $modelId
+     * @return array
+     * @throws \Exception
      */
-    protected function parseSSEEvent(string $event): ?StreamEvent
+    public function getModel(string $modelId): array
     {
-        $lines = array_filter(explode("\n", $event));
-        $eventType = '';
-        $data = '';
+        try {
+            $response = $this->getHttpClient()
+                ->get("{$this->baseUrl}/models/{$modelId}");
 
-        foreach ($lines as $line) {
-            if (strpos($line, 'event:') === 0) {
-                $eventType = trim(substr($line, 6));
-            } elseif (strpos($line, 'data:') === 0) {
-                $data = trim(substr($line, 5));
+            return $this->handleResponse($response);
+        } catch (\Exception $e) {
+            if ($e instanceof \Ajz\Anthropic\Exceptions\AnthropicException) {
+                throw $e;
             }
+            Log::error('Anthropic API Error: ' . $e->getMessage(), [
+                'model_id' => $modelId,
+                'exception' => get_class($e)
+            ]);
+            throw new \Ajz\Anthropic\Exceptions\ApiException(
+                'Failed to get model details: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
         }
-
-        if (empty($eventType) || empty($data)) {
-            return null;
-        }
-
-        $data = json_decode($data, true);
-        if (!$data) {
-            return null;
-        }
-
-        return $this->processStreamEvent($eventType, $data);
     }
-
-    /**
-     * Process stream event into proper event object
-     *
-     * @param string $type
-     * @param array $data
-     * @return StreamEvent
-     */
-    protected function processStreamEvent(string $type, array $data): StreamEvent
-    {
-        return match ($type) {
-            'message_start' => new MessageStartEvent($data),
-            'content_block_start' => new ContentBlockStartEvent($data),
-            'content_block_delta' => new ContentBlockDeltaEvent($data),
-            'content_block_stop' => new ContentBlockStopEvent($data),
-            'message_delta' => new MessageDeltaEvent($data),
-            'message_stop' => new MessageStopEvent($data),
-            'error' => new ErrorEvent($data),
-            default => new StreamEvent($type, $data)
-        };
-    }
-
-    // ... (rest of the class remains the same)
 }

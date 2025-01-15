@@ -5,47 +5,53 @@ return [
     |--------------------------------------------------------------------------
     | Anthropic API Configuration
     |--------------------------------------------------------------------------
+    |
+    | Here you can configure your Anthropic API settings. The API key is required
+    | for making requests to the Anthropic API.
+    |
     */
 
     'api_key' => env('ANTHROPIC_API_KEY'),
-    'admin_api_key' => env('ANTHROPIC_ADMIN_API_KEY'),
-    'version' => env('ANTHROPIC_API_VERSION', '2023-06-01'),
+
     'base_url' => env('ANTHROPIC_API_URL', 'https://api.anthropic.com/v1'),
 
     /*
     |--------------------------------------------------------------------------
-    | API IP Ranges
+    | Cache Configuration
     |--------------------------------------------------------------------------
     |
-    | These are the official Anthropic API IP ranges. These ranges can be used
-    | to configure firewall rules for egress traffic.
+    | Configure caching settings for AI Assistants
     |
     */
-
-    'ip_ranges' => [
-        'ipv4' => ['160.79.104.0/23'],
-        'ipv6' => ['2607:6bc0::/48'],
+    'cache' => [
+        'enabled' => env('AI_ASSISTANT_CACHE_ENABLED', true),
+        'ttl' => env('AI_ASSISTANT_CACHE_TTL', 3600), // 1 hour
+        'prefix' => env('AI_ASSISTANT_CACHE_PREFIX', 'ai_assistant:'),
     ],
 
     /*
     |--------------------------------------------------------------------------
-    | Default Models
+    | Default Assistant Configuration
     |--------------------------------------------------------------------------
+    |
+    | Default settings for new AI Assistants
+    |
     */
-
-    'default_model' => env('ANTHROPIC_DEFAULT_MODEL', 'claude-3-5-sonnet-20241022'),
-    'max_tokens' => env('ANTHROPIC_MAX_TOKENS', 1024),
+    'defaults' => [
+        'model' => env('ANTHROPIC_DEFAULT_MODEL', 'claude-3-5-sonnet-20241022'),
+        'max_tokens' => env('ANTHROPIC_MAX_TOKENS', 1024),
+    ],
 
     /*
     |--------------------------------------------------------------------------
-    | HTTP Client Configuration
+    | Logging Configuration
     |--------------------------------------------------------------------------
+    |
+    | Configure logging settings for AI Assistant operations
+    |
     */
-
-    'http' => [
-        'timeout' => env('ANTHROPIC_TIMEOUT', 30),
-        'connect_timeout' => env('ANTHROPIC_CONNECT_TIMEOUT', 10),
-        'retry_times' => env('ANTHROPIC_RETRY_TIMES', 3),
-        'retry_sleep' => env('ANTHROPIC_RETRY_SLEEP', 500),
+    'logging' => [
+        'enabled' => env('AI_ASSISTANT_LOGGING_ENABLED', true),
+        'channel' => env('AI_ASSISTANT_LOG_CHANNEL', 'stack'),
     ],
 ];

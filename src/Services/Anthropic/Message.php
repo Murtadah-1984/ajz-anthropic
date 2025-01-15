@@ -1,22 +1,80 @@
 <?php
 
-namespace Ajz\Anthropic\Services\Anthropic;
+declare(strict_types=1);
 
-use Ajz\Anthropic\Services\Anthropic\TextContent;
-use Ajz\Anthropic\Services\Anthropic\ToolUseContent;
-use Ajz\Anthropic\Services\Anthropic\Usage;
+/**
+ * @OA\Schema(
+ *     schema="Message",
+ *     title="Message",
+ *     description="Represents a message in the Anthropic API",
+ *     required={"id", "type", "role", "model", "content"},
+ *     @OA\Property(
+ *         property="id",
+ *         type="string",
+ *         description="Unique identifier for the message"
+ *     ),
+ *     @OA\Property(
+ *         property="type",
+ *         type="string",
+ *         description="Type of the message, always 'message'",
+ *         default="message"
+ *     ),
+ *     @OA\Property(
+ *         property="role",
+ *         type="string",
+ *         description="Role of the message sender, always 'assistant'",
+ *         default="assistant"
+ *     ),
+ *     @OA\Property(
+ *         property="model",
+ *         type="string",
+ *         description="The model used for generating the message"
+ *     ),
+ *     @OA\Property(
+ *         property="content",
+ *         type="array",
+ *         description="Array of message content objects",
+ *         @OA\Items(
+ *             oneOf={
+ *                 @OA\Schema(ref="#/components/schemas/TextContent"),
+ *                 @OA\Schema(ref="#/components/schemas/ToolUseContent")
+ *             }
+ *         )
+ *     ),
+ *     @OA\Property(
+ *         property="stop_reason",
+ *         type="string",
+ *         nullable=true,
+ *         description="Reason why message generation stopped"
+ *     ),
+ *     @OA\Property(
+ *         property="stop_sequence",
+ *         type="string",
+ *         nullable=true,
+ *         description="Sequence that caused message generation to stop"
+ *     ),
+ *     @OA\Property(
+ *         property="usage",
+ *         ref="#/components/schemas/Usage",
+ *         description="Usage statistics for the message"
+ *     )
+ * )
+ */
+
+namespace Ajz\Anthropic\Services\Anthropic;
 
 
 final class Message
 {
-    public string $id;
-    public string $type = 'message';
-    public string $role = 'assistant';
-    public string $model;
-    public array $content;
-    public ?string $stop_reason;
-    public ?string $stop_sequence;
-    public Usage $usage;
+    public readonly string $id;
+    public readonly string $type = 'message';
+    public readonly string $role = 'assistant';
+    public readonly string $model;
+    /** @var array<int, TextContent|ToolUseContent> */
+    public readonly array $content;
+    public readonly ?string $stop_reason;
+    public readonly ?string $stop_sequence;
+    public readonly Usage $usage;
 
     public function __construct(array $data)
     {

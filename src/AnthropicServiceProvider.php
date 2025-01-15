@@ -1,5 +1,23 @@
 <?php
 
+declare(strict_types=1);
+
+/**
+ * @OA\Info(
+ *     version="1.0.0",
+ *     title="Laravel Anthropic API",
+ *     description="Laravel package for integrating with the Anthropic AI API",
+ *     @OA\Contact(
+ *         email="murtadah.haddad@gmail.com",
+ *         name="Murtadah Haddad"
+ *     ),
+ *     @OA\License(
+ *         name="MIT",
+ *         url="https://opensource.org/licenses/MIT"
+ *     )
+ * )
+ */
+
 namespace Ajz\Anthropic;
 
 use Illuminate\Support\ServiceProvider;
@@ -12,7 +30,7 @@ use Ajz\Anthropic\Services\Organization\{
     ApiKeyService
 };
 
-class AnthropicServiceProvider extends ServiceProvider
+final class AnthropicServiceProvider extends ServiceProvider
 {
     public function register()
     {
@@ -23,6 +41,12 @@ class AnthropicServiceProvider extends ServiceProvider
         // Register main services
         $this->app->singleton(AnthropicClaudeApiService::class, function ($app) {
             return new AnthropicClaudeApiService();
+        });
+
+        $this->app->singleton(AIAssistantFactory::class, function ($app) {
+            return new AIAssistantFactory(
+                $app->make(AnthropicClaudeApiService::class)
+            );
         });
 
         // Register organization services
