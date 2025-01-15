@@ -1,0 +1,138 @@
+# Cost monitoring rules for Prometheus
+groups:
+  - name: anthropic_cost_rules
+    rules:
+      - record: anthropic:api_cost_per_request
+        expr: |
+          sum(rate(anthropic_api_requests_total[5m])) * 0.001
+
+      - record: anthropic:monthly_compute_cost
+        expr: |
+          sum(
+            count(kube_pod_container_info{namespace="anthropic"}) by (node)
+            * on (node) group_left
+            avg(node_cost_per_hour) by (node)
+          ) * 24 * 30
+
+      - record: anthropic:monthly_storage_cost
+        expr: |
+          sum(
+            container_fs_usage_bytes{namespace="anthropic"}
+          ) * 0.00005 # $0.05 per GB per month
+
+      - record: anthropic:monthly_network_cost
+        expr: |
+          sum(
+            rate(container_network_transmit_bytes_total{namespace="anthropic"}[5m])
+          ) * 2592000 * 0.09 # $0.09 per GB
+
+      - record: anthropic:total_monthly_cost
+        expr: |
+          anthropic:monthly_compute_cost +
+          anthropic:monthly_storage_cost +
+          anthropic:monthly_network_cost
+
+      - record: anthropic:cost_per_request
+        expr: |
+          anthropic:total_monthly_cost /
+          sum(increase(anthropic_api_requests_total[30d]))
+
+      # Cache efficiency impact on cost
+      - record: anthropic:cache_savings
+        expr: |
+          sum(rate(anthropic_cache_hits_total[5m])) * 0.001 # $0.001 per saved request
+
+      # Resource utilization efficiency
+      - record: anthropic:cpu_cost_efficiency
+        expr: |
+          sum(rate(container_cpu_usage_seconds_total{namespace="anthropic"}[5m]))
+          / sum(kube_pod_container_resource_requests_cpu_cores{namespace="anthropic"})
+
+      - record: anthropic:memory_cost_efficiency
+        expr: |
+          sum(container_memory_working_set_bytes{namespace="anthropic"})
+          / sum(kube_pod_container_resource_requests_memory_bytes{namespace="anthropic"})
+
+      # Alert rules
+      - alert: HighCostSpike
+        expr: |
+          increase(anthropic:total_monthly_cost[1h]) > 100
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: High cost spike detected
+          description: Cost increased by more than $100 in the last hour
+
+      - alert: LowCacheEfficiency
+        expr: |
+          anthropic:cache_savings / anthropic:total_monthly_cost < 0.2
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: Low cache efficiency detected
+          description: Cache savings are less than 20% of total cost
+
+      - alert: ResourceOverprovisioning
+        expr: |
+          anthropic:cpu_cost_efficiency < 0.5 or anthropic:memory_cost_efficiency < 0.5
+        for: 6h
+        labels:
+          severity: warning
+        annotations:
+          summary: Resources may be overprovisioned
+          description: Resource utilization is below 50% for extended period
+
+      # Cost breakdown by component
+      - record: anthropic:cost_by_component
+        expr: |
+          label_replace(
+            sum by (component) (
+              {__name__=~"anthropic:.+_cost",
+               component=~"compute|storage|network"}
+            ),
+            "component",
+            "$1",
+            "component",
+            "(.+)"
+          )
+
+      # Cost trends
+      - record: anthropic:cost_trend
+        expr: |
+          rate(anthropic:total_monthly_cost[7d])
+
+      # Cost per environment
+      - record: anthropic:cost_by_environment
+        expr: |
+          sum by (environment) (
+            anthropic:total_monthly_cost *
+            on(namespace) group_left(environment)
+            kube_namespace_labels{environment=~"prod|staging|dev"}
+          )
+
+      # Cost optimization metrics
+      - record: anthropic:optimization_potential
+        expr: |
+          (1 - anthropic:cpu_cost_efficiency) * anthropic:monthly_compute_cost +
+          (1 - anthropic:memory_cost_efficiency) * anthropic:monthly_compute_cost
+
+      # Resource request vs usage ratio
+      - record: anthropic:resource_efficiency_ratio
+        expr: |
+          sum(
+            rate(container_cpu_usage_seconds_total{namespace="anthropic"}[5m])
+          ) /
+          sum(
+            kube_pod_container_resource_requests_cpu_cores{namespace="anthropic"}
+          )
+
+      # Cost anomaly detection
+      - record: anthropic:cost_anomaly_score
+        expr: |
+          abs(
+            rate(anthropic:total_monthly_cost[1h]) -
+            avg_over_time(rate(anthropic:total_monthly_cost[24h])[1h:5m])
+          ) /
+          stddev_over_time(rate(anthropic:total_monthly_cost[24h])[1h:5m])

@@ -1,0 +1,286 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": "-- Grafana --",
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "gnetId": null,
+  "graphTooltip": 0,
+  "id": 1,
+  "links": [],
+  "panels": [
+    {
+      "title": "Total Monthly Cost",
+      "type": "stat",
+      "datasource": "CloudWatch",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 1000
+              },
+              {
+                "color": "red",
+                "value": 2000
+              }
+            ]
+          },
+          "unit": "currencyUSD"
+        }
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "text": {},
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "namespace": "AWS/Billing",
+          "metricName": "EstimatedCharges",
+          "dimensions": {
+            "ServiceName": "AmazonEKS",
+            "Currency": "USD"
+          },
+          "statistic": "Maximum",
+          "period": "86400"
+        }
+      ]
+    },
+    {
+      "title": "Cost by Service",
+      "type": "piechart",
+      "datasource": "CloudWatch",
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "right",
+          "values": ["value"]
+        }
+      },
+      "targets": [
+        {
+          "namespace": "AWS/Billing",
+          "metricName": "EstimatedCharges",
+          "dimensions": {
+            "ServiceName": ["AmazonEKS", "AmazonElastiCache", "AmazonS3", "AWSCloudWatch"],
+            "Currency": "USD"
+          },
+          "statistic": "Maximum",
+          "period": "86400"
+        }
+      ]
+    },
+    {
+      "title": "Cost Trend",
+      "type": "timeseries",
+      "datasource": "CloudWatch",
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      },
+      "targets": [
+        {
+          "namespace": "AWS/Billing",
+          "metricName": "EstimatedCharges",
+          "dimensions": {
+            "ServiceName": "AmazonEKS",
+            "Currency": "USD"
+          },
+          "statistic": "Maximum",
+          "period": "3600"
+        }
+      ]
+    },
+    {
+      "title": "Node Resource Utilization",
+      "type": "gauge",
+      "datasource": "Prometheus",
+      "options": {
+        "orientation": "auto",
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(container_cpu_usage_seconds_total{container!=\"\"}[5m])) by (instance) / sum(machine_cpu_cores) by (instance) * 100",
+          "legendFormat": "CPU Usage %"
+        },
+        {
+          "expr": "sum(container_memory_working_set_bytes{container!=\"\"}) by (instance) / sum(machine_memory_bytes) by (instance) * 100",
+          "legendFormat": "Memory Usage %"
+        }
+      ]
+    },
+    {
+      "title": "Cache Hit Rate",
+      "type": "gauge",
+      "datasource": "Prometheus",
+      "options": {
+        "orientation": "auto",
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true,
+        "thresholds": {
+          "mode": "absolute",
+          "steps": [
+            {
+              "color": "red",
+              "value": null
+            },
+            {
+              "color": "yellow",
+              "value": 50
+            },
+            {
+              "color": "green",
+              "value": 80
+            }
+          ]
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(anthropic_cache_hits_total[5m])) / sum(rate(anthropic_cache_requests_total[5m])) * 100",
+          "legendFormat": "Cache Hit Rate %"
+        }
+      ]
+    },
+    {
+      "title": "API Request Cost",
+      "type": "timeseries",
+      "datasource": "Prometheus",
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(anthropic_api_requests_total[5m])) * 0.001",
+          "legendFormat": "Estimated Cost per Request ($)"
+        }
+      ]
+    },
+    {
+      "title": "Storage Usage",
+      "type": "bargauge",
+      "datasource": "CloudWatch",
+      "options": {
+        "orientation": "horizontal",
+        "showUnfilled": true
+      },
+      "targets": [
+        {
+          "namespace": "AWS/S3",
+          "metricName": "BucketSizeBytes",
+          "dimensions": {
+            "BucketName": "${var.log_bucket_name}",
+            "StorageType": "StandardStorage"
+          },
+          "statistic": "Average",
+          "period": "86400"
+        }
+      ]
+    },
+    {
+      "title": "Cost Optimization Recommendations",
+      "type": "table",
+      "datasource": "CloudWatch",
+      "options": {
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "namespace": "AWS/Trusted-Advisor",
+          "metricName": "CategorySpecificResourceCount",
+          "dimensions": {
+            "Category": "cost_optimizing"
+          },
+          "statistic": "Maximum",
+          "period": "3600"
+        }
+      ]
+    }
+  ],
+  "refresh": "5m",
+  "schemaVersion": 30,
+  "style": "dark",
+  "tags": ["cost", "monitoring", "anthropic"],
+  "templating": {
+    "list": [
+      {
+        "current": {
+          "selected": false,
+          "text": "prod",
+          "value": "prod"
+        },
+        "description": null,
+        "error": null,
+        "hide": 0,
+        "includeAll": false,
+        "label": "Environment",
+        "multi": false,
+        "name": "environment",
+        "options": [
+          {
+            "selected": true,
+            "text": "prod",
+            "value": "prod"
+          },
+          {
+            "selected": false,
+            "text": "staging",
+            "value": "staging"
+          },
+          {
+            "selected": false,
+            "text": "dev",
+            "value": "dev"
+          }
+        ],
+        "query": "prod,staging,dev",
+        "skipUrlSync": false,
+        "type": "custom"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-30d",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "",
+  "title": "Anthropic Middleware Cost Monitoring",
+  "uid": "anthropic-cost",
+  "version": 1
+}

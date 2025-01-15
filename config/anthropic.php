@@ -10,10 +10,31 @@ return [
     | for making requests to the Anthropic API.
     |
     */
+    'api' => [
+        'key' => env('ANTHROPIC_API_KEY'),
+        'base_url' => env('ANTHROPIC_API_URL', 'https://api.anthropic.com/v1'),
+        'version' => env('ANTHROPIC_API_VERSION', '2024-01-01'),
+        'timeout' => env('ANTHROPIC_API_TIMEOUT', 30),
+        'retry' => [
+            'times' => env('ANTHROPIC_API_RETRY_TIMES', 3),
+            'sleep' => env('ANTHROPIC_API_RETRY_SLEEP', 100),
+        ],
+    ],
 
-    'api_key' => env('ANTHROPIC_API_KEY'),
-
-    'base_url' => env('ANTHROPIC_API_URL', 'https://api.anthropic.com/v1'),
+    /*
+    |--------------------------------------------------------------------------
+    | Rate Limiting Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Configure rate limiting settings for API requests
+    |
+    */
+    'rate_limiting' => [
+        'enabled' => env('ANTHROPIC_RATE_LIMITING_ENABLED', true),
+        'max_requests' => env('ANTHROPIC_RATE_LIMIT_MAX_REQUESTS', 60),
+        'decay_minutes' => env('ANTHROPIC_RATE_LIMIT_DECAY_MINUTES', 1),
+        'cache_driver' => env('ANTHROPIC_RATE_LIMIT_CACHE_DRIVER', 'redis'),
+    ],
 
     /*
     |--------------------------------------------------------------------------
@@ -24,9 +45,11 @@ return [
     |
     */
     'cache' => [
-        'enabled' => env('AI_ASSISTANT_CACHE_ENABLED', true),
-        'ttl' => env('AI_ASSISTANT_CACHE_TTL', 3600), // 1 hour
-        'prefix' => env('AI_ASSISTANT_CACHE_PREFIX', 'ai_assistant:'),
+        'enabled' => env('ANTHROPIC_CACHE_ENABLED', true),
+        'ttl' => env('ANTHROPIC_CACHE_TTL', 3600),
+        'prefix' => env('ANTHROPIC_CACHE_PREFIX', 'anthropic:'),
+        'store' => env('ANTHROPIC_CACHE_STORE', 'redis'),
+        'tags_enabled' => env('ANTHROPIC_CACHE_TAGS_ENABLED', true),
     ],
 
     /*
@@ -40,6 +63,9 @@ return [
     'defaults' => [
         'model' => env('ANTHROPIC_DEFAULT_MODEL', 'claude-3-5-sonnet-20241022'),
         'max_tokens' => env('ANTHROPIC_MAX_TOKENS', 1024),
+        'temperature' => env('ANTHROPIC_TEMPERATURE', 0.7),
+        'top_p' => env('ANTHROPIC_TOP_P', 1.0),
+        'timeout' => env('ANTHROPIC_TIMEOUT', 60),
     ],
 
     /*
@@ -51,34 +77,111 @@ return [
     |
     */
     'logging' => [
-        'enabled' => env('AI_ASSISTANT_LOGGING_ENABLED', true),
-        'channel' => env('AI_ASSISTANT_LOG_CHANNEL', 'stack'),
+        'enabled' => env('ANTHROPIC_LOGGING_ENABLED', true),
+        'channel' => env('ANTHROPIC_LOG_CHANNEL', 'anthropic'),
+        'level' => env('ANTHROPIC_LOG_LEVEL', 'info'),
+        'separate_files' => env('ANTHROPIC_LOG_SEPARATE_FILES', true),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Agent Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Configure AI agents and their capabilities
+    |
+    */
     'agents' => [
         'developer' => [
-            'class' => \App\AIAgents\Specialized\DeveloperAgent::class,
+            'class' => \Ajz\Anthropic\Agency\AiAgents\Specialized\DeveloperAgent::class,
             'capabilities' => ['code_generation', 'debugging', 'review'],
+            'model' => env('ANTHROPIC_DEVELOPER_MODEL', 'claude-3-5-sonnet-20241022'),
+            'max_tokens' => env('ANTHROPIC_DEVELOPER_MAX_TOKENS', 2048),
         ],
         'architect' => [
-            'class' => \App\AIAgents\Specialized\ArchitectAgent::class,
+            'class' => \Ajz\Anthropic\Agency\AiAgents\Specialized\ArchitectAgent::class,
             'capabilities' => ['system_design', 'architecture_review'],
+            'model' => env('ANTHROPIC_ARCHITECT_MODEL', 'claude-3-5-sonnet-20241022'),
+            'max_tokens' => env('ANTHROPIC_ARCHITECT_MAX_TOKENS', 4096),
         ],
         'security' => [
-            'class' => \App\AIAgents\Specialized\SecurityAgent::class,
+            'class' => \Ajz\Anthropic\Agency\AiAgents\Specialized\SecurityAgent::class,
             'capabilities' => ['security_analysis', 'vulnerability_assessment'],
+            'model' => env('ANTHROPIC_SECURITY_MODEL', 'claude-3-5-sonnet-20241022'),
+            'max_tokens' => env('ANTHROPIC_SECURITY_MAX_TOKENS', 2048),
         ],
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Team Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Configure AI teams and their member agents
+    |
+    */
     'teams' => [
         'development' => [
-            'class' => \App\AIAgents\Teams\DevelopmentTeam::class,
+            'class' => \Ajz\Anthropic\Agency\Teams\DevelopmentTeam::class,
             'agents' => ['developer', 'architect', 'security'],
+            'workflow' => 'sequential',
+            'max_rounds' => env('ANTHROPIC_TEAM_MAX_ROUNDS', 5),
         ],
     ],
 
-    'cache' => [
-        'ttl' => 3600,
-        'prefix' => 'ai_',
-    ]
+    /*
+    |--------------------------------------------------------------------------
+    | Validation Rules
+    |--------------------------------------------------------------------------
+    |
+    | Define validation rules for request parameters
+    |
+    */
+    'validation' => [
+        'max_prompt_length' => env('ANTHROPIC_MAX_PROMPT_LENGTH', 4000),
+        'max_context_length' => env('ANTHROPIC_MAX_CONTEXT_LENGTH', 8000),
+        'allowed_mime_types' => ['text/plain', 'application/json', 'text/markdown'],
+        'max_file_size' => env('ANTHROPIC_MAX_FILE_SIZE', 1024 * 1024), // 1MB
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Response Transformation
+    |--------------------------------------------------------------------------
+    |
+    | Configure how API responses should be transformed and formatted.
+    |
+    */
+    'response' => [
+        // Enable/disable response transformation
+        'transform_enabled' => env('ANTHROPIC_TRANSFORM_ENABLED', true),
+
+        // Enable/disable response enveloping (wrapping responses in a standard format)
+        'envelope_enabled' => env('ANTHROPIC_ENVELOPE_ENABLED', true),
+
+        // Include metadata in responses (timing, version, etc.)
+        'include_metadata' => env('ANTHROPIC_INCLUDE_METADATA', true),
+
+        // Default messages for different response types
+        'messages' => [
+            'success' => env('ANTHROPIC_SUCCESS_MESSAGE', 'Request processed successfully'),
+            'error' => env('ANTHROPIC_ERROR_MESSAGE', 'Request failed'),
+        ],
+
+        // Configure which response types should be transformed
+        'transform_types' => [
+            'json' => true,
+            'stream' => false,
+            'binary' => false,
+        ],
+
+        // Configure metadata fields to include
+        'metadata_fields' => [
+            'timestamp' => true,
+            'duration' => true,
+            'version' => true,
+            'request_id' => true,
+            'pagination' => true,
+        ],
+    ],
 ];

@@ -1,0 +1,159 @@
+# AlertManager configuration for cost monitoring
+global:
+  resolve_timeout: 5m
+  slack_api_url: '${SLACK_WEBHOOK_URL}'
+  smtp_smarthost: 'smtp.example.com:587'
+  smtp_from: 'alertmanager@example.com'
+  smtp_auth_username: '${SMTP_USERNAME}'
+  smtp_auth_password: '${SMTP_PASSWORD}'
+
+route:
+  group_by: ['alertname', 'environment']
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  receiver: 'slack-notifications'
+  routes:
+    - match:
+        severity: critical
+      receiver: 'pagerduty-critical'
+      repeat_interval: 1h
+    - match:
+        severity: warning
+        type: cost
+      receiver: 'slack-cost-alerts'
+      repeat_interval: 12h
+    - match:
+        severity: info
+        type: cost
+      receiver: 'email-digest'
+      repeat_interval: 24h
+
+inhibit_rules:
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'environment']
+
+receivers:
+  - name: 'slack-notifications'
+    slack_configs:
+      - channel: '#anthropic-monitoring'
+        send_resolved: true
+        icon_url: 'https://avatars.slack-edge.com/cost-alert.png'
+        title: '{{ template "slack.title" . }}'
+        text: '{{ template "slack.text" . }}'
+        actions:
+          - type: button
+            text: 'View Dashboard'
+            url: '{{ .ExternalURL }}/d/anthropic-cost'
+
+  - name: 'slack-cost-alerts'
+    slack_configs:
+      - channel: '#anthropic-cost-alerts'
+        send_resolved: true
+        icon_url: 'https://avatars.slack-edge.com/cost-alert.png'
+        title: '[{{ .Status | toUpper }}] Cost Alert: {{ .GroupLabels.alertname }}'
+        text: |
+          *Alert:* {{ .GroupLabels.alertname }}
+          *Severity:* {{ .CommonLabels.severity }}
+          *Environment:* {{ .CommonLabels.environment }}
+
+          *Details:*
+          {{ range .Alerts }}
+            • {{ .Annotations.description }}
+          {{ end }}
+
+          *Recommendations:*
+          {{ if eq .GroupLabels.alertname "HighCostSpike" }}
+          • Review recent infrastructure changes
+          • Check for unusual API usage patterns
+          • Verify rate limiting configuration
+          {{ else if eq .GroupLabels.alertname "LowCacheEfficiency" }}
+          • Review cache configuration
+          • Check cache invalidation patterns
+          • Consider increasing cache TTL
+          {{ else if eq .GroupLabels.alertname "ResourceOverprovisioning" }}
+          • Consider downsizing resources
+          • Review auto-scaling configuration
+          • Check for idle resources
+          {{ end }}
+
+  - name: 'pagerduty-critical'
+    pagerduty_configs:
+      - service_key: '${PAGERDUTY_SERVICE_KEY}'
+        send_resolved: true
+        description: '{{ template "pagerduty.description" . }}'
+        client: 'AlertManager'
+        client_url: '{{ template "pagerduty.url" . }}'
+        severity: critical
+
+  - name: 'email-digest'
+    email_configs:
+      - to: 'team@example.com'
+        send_resolved: false
+        headers:
+          subject: '[Cost Report] Daily Cost Optimization Digest'
+        html: |
+          <h2>Daily Cost Optimization Report</h2>
+          <p>The following cost-related alerts were triggered in the last 24 hours:</p>
+
+          <ul>
+          {{ range .Alerts }}
+            <li>
+              <strong>{{ .Labels.alertname }}</strong><br>
+              Severity: {{ .Labels.severity }}<br>
+              Description: {{ .Annotations.description }}<br>
+              Started: {{ .StartsAt }}
+            </li>
+          {{ end }}
+          </ul>
+
+          <p>View detailed metrics in the <a href="{{ .ExternalURL }}/d/anthropic-cost">Cost Dashboard</a></p>
+
+templates:
+  - '/etc/alertmanager/templates/*.tmpl'
+
+# Custom alert templates
+# laravel-anthropic/monitoring/alertmanager/templates/custom.tmpl
+templates:
+  - name: 'slack.title'
+    template: |
+      [{{ .Status | toUpper }}] {{ .GroupLabels.alertname }}
+
+  - name: 'slack.text'
+    template: |
+      *Alert:* {{ .GroupLabels.alertname }}
+      *Status:* {{ .Status }}
+      *Severity:* {{ .CommonLabels.severity }}
+      *Environment:* {{ .CommonLabels.environment }}
+
+      {{ if eq .Status "firing" }}
+      *Details:*
+      {{ range .Alerts }}
+        • {{ .Annotations.description }}
+      {{ end }}
+      {{ else }}
+      Alert has been resolved.
+      {{ end }}
+
+  - name: 'pagerduty.description'
+    template: |
+      [{{ .Status | toUpper }}] {{ .GroupLabels.alertname }} - {{ .CommonAnnotations.summary }}
+
+  - name: 'pagerduty.url'
+    template: |
+      {{ .ExternalURL }}/d/anthropic-cost
+
+# Muting rules for maintenance windows
+mute_time_intervals:
+  - name: maintenance-window
+    time_intervals:
+      - weekdays: ['saturday', 'sunday']
+        times:
+          - start_time: '00:00'
+            end_time: '23:59'
+      - times:
+          - start_time: '22:00'
+            end_time: '06:00'
