@@ -6,12 +6,11 @@ use Ajz\Anthropic\AIAgents\Communication\AgentMessage;
 use Ajz\Anthropic\Models\OptimizationReport;
 use Ajz\Anthropic\Models\SessionArtifact;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
 
 class DatabaseOptimizationSession extends BaseSession
 {
     /**
-     * Database metrics and analysis results.
+     * Database performance metrics and analysis.
      *
      * @var Collection
      */
@@ -25,11 +24,11 @@ class DatabaseOptimizationSession extends BaseSession
     protected Collection $recommendations;
 
     /**
-     * Performance benchmarks.
+     * Query analysis results.
      *
      * @var Collection
      */
-    protected Collection $benchmarks;
+    protected Collection $queryAnalysis;
 
     public function __construct(
         protected readonly AgentMessageBroker $broker,
@@ -38,7 +37,7 @@ class DatabaseOptimizationSession extends BaseSession
         parent::__construct($broker, $configuration);
         $this->metrics = collect();
         $this->recommendations = collect();
-        $this->benchmarks = collect();
+        $this->queryAnalysis = collect();
     }
 
     public function start(): void
@@ -47,12 +46,13 @@ class DatabaseOptimizationSession extends BaseSession
 
         $steps = [
             'performance_analysis',
-            'schema_analysis',
-            'query_analysis',
+            'query_optimization',
             'index_analysis',
-            'storage_analysis',
-            'benchmark_execution',
-            'optimization_planning',
+            'schema_review',
+            'storage_optimization',
+            'capacity_planning',
+            'backup_review',
+            'security_assessment',
             'report_generation'
         ];
 
@@ -66,12 +66,13 @@ class DatabaseOptimizationSession extends BaseSession
     {
         $stepResult = match($step) {
             'performance_analysis' => $this->analyzePerformance(),
-            'schema_analysis' => $this->analyzeSchema(),
-            'query_analysis' => $this->analyzeQueries(),
+            'query_optimization' => $this->optimizeQueries(),
             'index_analysis' => $this->analyzeIndexes(),
-            'storage_analysis' => $this->analyzeStorage(),
-            'benchmark_execution' => $this->executeBenchmarks(),
-            'optimization_planning' => $this->planOptimizations(),
+            'schema_review' => $this->reviewSchema(),
+            'storage_optimization' => $this->optimizeStorage(),
+            'capacity_planning' => $this->planCapacity(),
+            'backup_review' => $this->reviewBackups(),
+            'security_assessment' => $this->assessSecurity(),
             'report_generation' => $this->generateReport()
         };
 
@@ -83,139 +84,145 @@ class DatabaseOptimizationSession extends BaseSession
         $message = new AgentMessage(
             senderId: $this->sessionId,
             content: json_encode([
-                'task' => 'database_performance_analysis',
+                'task' => 'performance_analysis',
                 'context' => [
-                    'connection' => $this->configuration['connection'] ?? 'mysql',
-                    'metrics' => $this->gatherPerformanceMetrics()
+                    'database_metrics' => $this->getDatabaseMetrics(),
+                    'performance_thresholds' => $this->configuration['performance_thresholds'],
+                    'monitoring_data' => $this->getMonitoringData()
                 ]
             ]),
             metadata: [
                 'session_type' => 'database_optimization',
                 'step' => 'performance_analysis'
             ],
-            requiredCapabilities: ['database_analysis', 'performance_optimization']
+            requiredCapabilities: ['performance_analysis', 'database_monitoring']
         );
 
         $analysis = $this->broker->routeMessageAndWait($message);
-        $this->metrics->put('performance', $analysis['metrics']);
+        $this->metrics = collect($analysis['metrics']);
 
         return $analysis;
     }
 
-    private function analyzeSchema(): array
+    private function optimizeQueries(): array
     {
-        $analysis = $this->broker->routeMessageAndWait(new AgentMessage(
+        $optimization = $this->broker->routeMessageAndWait(new AgentMessage(
             senderId: $this->sessionId,
             content: json_encode([
-                'task' => 'database_schema_analysis',
-                'schema' => $this->getSchemaInformation(),
+                'task' => 'query_optimization',
                 'context' => [
-                    'database_type' => $this->configuration['connection'] ?? 'mysql',
-                    'current_metrics' => $this->metrics->get('performance')
+                    'slow_queries' => $this->getSlowQueries(),
+                    'query_patterns' => $this->getQueryPatterns(),
+                    'execution_plans' => $this->getExecutionPlans()
                 ]
             ]),
-            metadata: ['step' => 'schema_analysis'],
-            requiredCapabilities: ['database_analysis', 'schema_optimization']
+            metadata: ['step' => 'query_optimization'],
+            requiredCapabilities: ['query_optimization', 'performance_tuning']
         ));
 
-        $this->metrics->put('schema', $analysis['metrics']);
-        return $analysis;
-    }
-
-    private function analyzeQueries(): array
-    {
-        $analysis = $this->broker->routeMessageAndWait(new AgentMessage(
-            senderId: $this->sessionId,
-            content: json_encode([
-                'task' => 'query_analysis',
-                'queries' => $this->getSlowQueries(),
-                'context' => [
-                    'schema' => $this->getSchemaInformation(),
-                    'performance_metrics' => $this->metrics->get('performance')
-                ]
-            ]),
-            metadata: ['step' => 'query_analysis'],
-            requiredCapabilities: ['query_optimization', 'performance_analysis']
-        ));
-
-        $this->metrics->put('queries', $analysis['metrics']);
-        return $analysis;
+        $this->queryAnalysis = collect($optimization['analysis']);
+        return $optimization;
     }
 
     private function analyzeIndexes(): array
     {
-        $analysis = $this->broker->routeMessageAndWait(new AgentMessage(
+        return $this->broker->routeMessageAndWait(new AgentMessage(
             senderId: $this->sessionId,
             content: json_encode([
                 'task' => 'index_analysis',
-                'indexes' => $this->getIndexInformation(),
                 'context' => [
-                    'schema' => $this->getSchemaInformation(),
-                    'query_metrics' => $this->metrics->get('queries')
+                    'current_indexes' => $this->getCurrentIndexes(),
+                    'index_usage' => $this->getIndexUsage(),
+                    'query_patterns' => $this->queryAnalysis->get('patterns')
                 ]
             ]),
             metadata: ['step' => 'index_analysis'],
-            requiredCapabilities: ['index_optimization', 'performance_analysis']
+            requiredCapabilities: ['index_optimization', 'database_tuning']
         ));
-
-        $this->metrics->put('indexes', $analysis['metrics']);
-        return $analysis;
     }
 
-    private function analyzeStorage(): array
-    {
-        $analysis = $this->broker->routeMessageAndWait(new AgentMessage(
-            senderId: $this->sessionId,
-            content: json_encode([
-                'task' => 'storage_analysis',
-                'storage' => $this->getStorageMetrics(),
-                'context' => [
-                    'database_size' => $this->getDatabaseSize(),
-                    'table_sizes' => $this->getTableSizes()
-                ]
-            ]),
-            metadata: ['step' => 'storage_analysis'],
-            requiredCapabilities: ['storage_optimization', 'capacity_planning']
-        ));
-
-        $this->metrics->put('storage', $analysis['metrics']);
-        return $analysis;
-    }
-
-    private function executeBenchmarks(): array
-    {
-        $benchmarks = $this->broker->routeMessageAndWait(new AgentMessage(
-            senderId: $this->sessionId,
-            content: json_encode([
-                'task' => 'benchmark_execution',
-                'context' => [
-                    'queries' => $this->getCommonQueries(),
-                    'current_metrics' => $this->metrics->toArray()
-                ]
-            ]),
-            metadata: ['step' => 'benchmark_execution'],
-            requiredCapabilities: ['performance_testing', 'benchmark_analysis']
-        ));
-
-        $this->benchmarks = collect($benchmarks['results']);
-        return $benchmarks;
-    }
-
-    private function planOptimizations(): array
+    private function reviewSchema(): array
     {
         return $this->broker->routeMessageAndWait(new AgentMessage(
             senderId: $this->sessionId,
             content: json_encode([
-                'task' => 'optimization_planning',
-                'metrics' => $this->metrics->toArray(),
-                'benchmarks' => $this->benchmarks->toArray(),
+                'task' => 'schema_review',
                 'context' => [
-                    'priority' => $this->configuration['priority'] ?? 'high',
-                    'constraints' => $this->configuration['constraints'] ?? []
+                    'current_schema' => $this->getCurrentSchema(),
+                    'data_models' => $this->getDataModels(),
+                    'normalization_level' => $this->configuration['normalization_level']
                 ]
             ]),
-            metadata: ['step' => 'optimization_planning'],
-            requiredCapabilities: ['optimization_planning', 'resource_management']
+            metadata: ['step' => 'schema_review'],
+            requiredCapabilities: ['schema_analysis', 'data_modeling']
+        ));
+    }
+
+    private function optimizeStorage(): array
+    {
+        return $this->broker->routeMessageAndWait(new AgentMessage(
+            senderId: $this->sessionId,
+            content: json_encode([
+                'task' => 'storage_optimization',
+                'context' => [
+                    'storage_metrics' => $this->getStorageMetrics(),
+                    'data_distribution' => $this->getDataDistribution(),
+                    'retention_policies' => $this->configuration['retention_policies']
+                ]
+            ]),
+            metadata: ['step' => 'storage_optimization'],
+            requiredCapabilities: ['storage_optimization', 'data_management']
+        ));
+    }
+
+    private function planCapacity(): array
+    {
+        return $this->broker->routeMessageAndWait(new AgentMessage(
+            senderId: $this->sessionId,
+            content: json_encode([
+                'task' => 'capacity_planning',
+                'context' => [
+                    'growth_metrics' => $this->getGrowthMetrics(),
+                    'resource_utilization' => $this->getResourceUtilization(),
+                    'scaling_requirements' => $this->configuration['scaling_requirements']
+                ]
+            ]),
+            metadata: ['step' => 'capacity_planning'],
+            requiredCapabilities: ['capacity_planning', 'resource_management']
+        ));
+    }
+
+    private function reviewBackups(): array
+    {
+        return $this->broker->routeMessageAndWait(new AgentMessage(
+            senderId: $this->sessionId,
+            content: json_encode([
+                'task' => 'backup_review',
+                'context' => [
+                    'backup_configuration' => $this->configuration['backup_configuration'],
+                    'recovery_metrics' => $this->getRecoveryMetrics(),
+                    'backup_history' => $this->getBackupHistory()
+                ]
+            ]),
+            metadata: ['step' => 'backup_review'],
+            requiredCapabilities: ['backup_management', 'disaster_recovery']
+        ));
+    }
+
+    private function assessSecurity(): array
+    {
+        return $this->broker->routeMessageAndWait(new AgentMessage(
+            senderId: $this->sessionId,
+            content: json_encode([
+                'task' => 'security_assessment',
+                'context' => [
+                    'security_configuration' => $this->configuration['security_configuration'],
+                    'access_patterns' => $this->getAccessPatterns(),
+                    'vulnerability_scan' => $this->getVulnerabilityScan()
+                ]
+            ]),
+            metadata: ['step' => 'security_assessment'],
+            requiredCapabilities: ['security_analysis', 'compliance_assessment']
         ));
     }
 
@@ -223,11 +230,10 @@ class DatabaseOptimizationSession extends BaseSession
     {
         $report = [
             'summary' => $this->generateSummary(),
-            'metrics' => $this->metrics->toArray(),
-            'benchmarks' => $this->benchmarks->toArray(),
-            'recommendations' => $this->recommendations->toArray(),
-            'optimization_plan' => $this->getStepArtifacts('optimization_planning'),
-            'impact_analysis' => $this->analyzeImpact()
+            'performance_analysis' => $this->generatePerformanceAnalysis(),
+            'optimization_recommendations' => $this->generateOptimizationRecommendations(),
+            'risk_assessment' => $this->generateRiskAssessment(),
+            'action_plan' => $this->generateActionPlan()
         ];
 
         OptimizationReport::create([
@@ -235,7 +241,7 @@ class DatabaseOptimizationSession extends BaseSession
             'type' => 'database',
             'content' => $report,
             'metadata' => [
-                'database' => $this->configuration['connection'] ?? 'mysql',
+                'database' => $this->configuration['database_name'],
                 'timestamp' => now(),
                 'version' => $this->configuration['version'] ?? '1.0.0'
             ]
@@ -247,157 +253,52 @@ class DatabaseOptimizationSession extends BaseSession
     private function generateSummary(): array
     {
         return [
-            'performance_score' => $this->calculatePerformanceScore(),
-            'critical_issues' => $this->metrics->get('performance.critical_issues', 0),
-            'optimization_opportunities' => $this->countOptimizationOpportunities(),
-            'estimated_impact' => $this->estimateOptimizationImpact(),
-            'resource_requirements' => $this->calculateResourceRequirements()
+            'performance_overview' => $this->summarizePerformance(),
+            'critical_issues' => $this->identifyCriticalIssues(),
+            'optimization_impact' => $this->assessOptimizationImpact(),
+            'resource_utilization' => $this->summarizeResourceUtilization(),
+            'key_metrics' => $this->summarizeKeyMetrics()
         ];
     }
 
-    private function calculatePerformanceScore(): float
-    {
-        $weights = [
-            'query_efficiency' => 0.3,
-            'index_effectiveness' => 0.25,
-            'schema_design' => 0.25,
-            'storage_efficiency' => 0.2
-        ];
-
-        $scores = [
-            'query_efficiency' => $this->metrics->get('queries.efficiency_score', 0),
-            'index_effectiveness' => $this->metrics->get('indexes.effectiveness_score', 0),
-            'schema_design' => $this->metrics->get('schema.design_score', 0),
-            'storage_efficiency' => $this->metrics->get('storage.efficiency_score', 0)
-        ];
-
-        return collect($weights)
-            ->map(fn($weight, $metric) => $weight * $scores[$metric])
-            ->sum();
-    }
-
-    private function countOptimizationOpportunities(): int
-    {
-        return collect($this->metrics)
-            ->pluck('optimization_opportunities')
-            ->flatten()
-            ->unique()
-            ->count();
-    }
-
-    private function estimateOptimizationImpact(): array
+    private function generatePerformanceAnalysis(): array
     {
         return [
-            'performance_improvement' => $this->estimatePerformanceImprovement(),
-            'storage_savings' => $this->estimateStorageSavings(),
-            'resource_reduction' => $this->estimateResourceReduction()
+            'query_performance' => $this->analyzeQueryPerformance(),
+            'index_effectiveness' => $this->analyzeIndexEffectiveness(),
+            'storage_efficiency' => $this->analyzeStorageEfficiency(),
+            'bottlenecks' => $this->identifyBottlenecks()
         ];
     }
 
-    private function calculateResourceRequirements(): array
+    private function generateOptimizationRecommendations(): array
     {
         return [
-            'time_estimate' => $this->estimateImplementationTime(),
-            'complexity' => $this->assessImplementationComplexity(),
-            'dependencies' => $this->identifyDependencies(),
-            'risks' => $this->assessImplementationRisks()
+            'query_optimizations' => $this->recommendQueryOptimizations(),
+            'index_improvements' => $this->recommendIndexImprovements(),
+            'schema_enhancements' => $this->recommendSchemaEnhancements(),
+            'configuration_tuning' => $this->recommendConfigurationTuning()
         ];
     }
 
-    private function gatherPerformanceMetrics(): array
+    private function generateRiskAssessment(): array
     {
-        // Implementation would gather metrics from the database
-        return [];
+        return [
+            'performance_risks' => $this->assessPerformanceRisks(),
+            'security_risks' => $this->assessSecurityRisks(),
+            'scalability_risks' => $this->assessScalabilityRisks(),
+            'data_integrity_risks' => $this->assessDataIntegrityRisks()
+        ];
     }
 
-    private function getSchemaInformation(): array
+    private function generateActionPlan(): array
     {
-        // Implementation would get schema information
-        return [];
-    }
-
-    private function getSlowQueries(): array
-    {
-        // Implementation would get slow query log
-        return [];
-    }
-
-    private function getIndexInformation(): array
-    {
-        // Implementation would get index information
-        return [];
-    }
-
-    private function getStorageMetrics(): array
-    {
-        // Implementation would get storage metrics
-        return [];
-    }
-
-    private function getDatabaseSize(): int
-    {
-        // Implementation would get database size
-        return 0;
-    }
-
-    private function getTableSizes(): array
-    {
-        // Implementation would get table sizes
-        return [];
-    }
-
-    private function getCommonQueries(): array
-    {
-        // Implementation would get common queries
-        return [];
-    }
-
-    private function analyzeImpact(): array
-    {
-        // Implementation would analyze impact
-        return [];
-    }
-
-    private function estimatePerformanceImprovement(): float
-    {
-        // Implementation would estimate improvement
-        return 0.0;
-    }
-
-    private function estimateStorageSavings(): float
-    {
-        // Implementation would estimate savings
-        return 0.0;
-    }
-
-    private function estimateResourceReduction(): float
-    {
-        // Implementation would estimate reduction
-        return 0.0;
-    }
-
-    private function estimateImplementationTime(): int
-    {
-        // Implementation would estimate time
-        return 0;
-    }
-
-    private function assessImplementationComplexity(): string
-    {
-        // Implementation would assess complexity
-        return 'medium';
-    }
-
-    private function identifyDependencies(): array
-    {
-        // Implementation would identify dependencies
-        return [];
-    }
-
-    private function assessImplementationRisks(): array
-    {
-        // Implementation would assess risks
-        return [];
+        return [
+            'immediate_actions' => $this->defineImmediateActions(),
+            'short_term_improvements' => $this->defineShortTermImprovements(),
+            'long_term_strategy' => $this->defineLongTermStrategy(),
+            'monitoring_plan' => $this->defineMonitoringPlan()
+        ];
     }
 
     private function storeStepArtifacts(string $step, array $artifacts): void
@@ -431,8 +332,48 @@ class DatabaseOptimizationSession extends BaseSession
         return $this->recommendations;
     }
 
-    public function getBenchmarks(): Collection
+    public function getQueryAnalysis(): Collection
     {
-        return $this->benchmarks;
+        return $this->queryAnalysis;
     }
+
+    // Placeholder methods for data gathering - would be implemented based on specific database monitoring tools
+    private function getDatabaseMetrics(): array { return []; }
+    private function getMonitoringData(): array { return []; }
+    private function getSlowQueries(): array { return []; }
+    private function getQueryPatterns(): array { return []; }
+    private function getExecutionPlans(): array { return []; }
+    private function getCurrentIndexes(): array { return []; }
+    private function getIndexUsage(): array { return []; }
+    private function getCurrentSchema(): array { return []; }
+    private function getDataModels(): array { return []; }
+    private function getStorageMetrics(): array { return []; }
+    private function getDataDistribution(): array { return []; }
+    private function getGrowthMetrics(): array { return []; }
+    private function getResourceUtilization(): array { return []; }
+    private function getRecoveryMetrics(): array { return []; }
+    private function getBackupHistory(): array { return []; }
+    private function getAccessPatterns(): array { return []; }
+    private function getVulnerabilityScan(): array { return []; }
+    private function summarizePerformance(): array { return []; }
+    private function identifyCriticalIssues(): array { return []; }
+    private function assessOptimizationImpact(): array { return []; }
+    private function summarizeResourceUtilization(): array { return []; }
+    private function summarizeKeyMetrics(): array { return []; }
+    private function analyzeQueryPerformance(): array { return []; }
+    private function analyzeIndexEffectiveness(): array { return []; }
+    private function analyzeStorageEfficiency(): array { return []; }
+    private function identifyBottlenecks(): array { return []; }
+    private function recommendQueryOptimizations(): array { return []; }
+    private function recommendIndexImprovements(): array { return []; }
+    private function recommendSchemaEnhancements(): array { return []; }
+    private function recommendConfigurationTuning(): array { return []; }
+    private function assessPerformanceRisks(): array { return []; }
+    private function assessSecurityRisks(): array { return []; }
+    private function assessScalabilityRisks(): array { return []; }
+    private function assessDataIntegrityRisks(): array { return []; }
+    private function defineImmediateActions(): array { return []; }
+    private function defineShortTermImprovements(): array { return []; }
+    private function defineLongTermStrategy(): array { return []; }
+    private function defineMonitoringPlan(): array { return []; }
 }

@@ -3,25 +3,25 @@
 namespace Ajz\Anthropic\AIAgents\Sessions;
 
 use Ajz\Anthropic\AIAgents\Communication\AgentMessage;
-use Ajz\Anthropic\Models\SecurityReport;
+use Ajz\Anthropic\Models\AuditReport;
 use Ajz\Anthropic\Models\SessionArtifact;
 use Illuminate\Support\Collection;
 
 class SecurityAuditSession extends BaseSession
 {
     /**
-     * Security findings and vulnerabilities.
+     * Security vulnerabilities and findings.
      *
      * @var Collection
      */
-    protected Collection $findings;
+    protected Collection $vulnerabilities;
 
     /**
-     * Security metrics and scores.
+     * Security assessment results.
      *
      * @var Collection
      */
-    protected Collection $metrics;
+    protected Collection $assessments;
 
     /**
      * Security recommendations.
@@ -35,8 +35,8 @@ class SecurityAuditSession extends BaseSession
         protected readonly array $configuration = []
     ) {
         parent::__construct($broker, $configuration);
-        $this->findings = collect();
-        $this->metrics = collect();
+        $this->vulnerabilities = collect();
+        $this->assessments = collect();
         $this->recommendations = collect();
     }
 
@@ -45,13 +45,13 @@ class SecurityAuditSession extends BaseSession
         $this->status = 'security_audit';
 
         $steps = [
-            'vulnerability_scanning',
+            'vulnerability_scan',
             'code_security_review',
-            'configuration_review',
-            'access_control_audit',
-            'encryption_review',
+            'configuration_audit',
+            'access_control_review',
             'dependency_analysis',
-            'compliance_verification',
+            'encryption_assessment',
+            'compliance_check',
             'threat_modeling',
             'report_generation'
         ];
@@ -65,13 +65,13 @@ class SecurityAuditSession extends BaseSession
     protected function processStep(string $step): void
     {
         $stepResult = match($step) {
-            'vulnerability_scanning' => $this->scanVulnerabilities(),
+            'vulnerability_scan' => $this->scanVulnerabilities(),
             'code_security_review' => $this->reviewCodeSecurity(),
-            'configuration_review' => $this->reviewConfiguration(),
-            'access_control_audit' => $this->auditAccessControl(),
-            'encryption_review' => $this->reviewEncryption(),
+            'configuration_audit' => $this->auditConfiguration(),
+            'access_control_review' => $this->reviewAccessControl(),
             'dependency_analysis' => $this->analyzeDependencies(),
-            'compliance_verification' => $this->verifyCompliance(),
+            'encryption_assessment' => $this->assessEncryption(),
+            'compliance_check' => $this->checkCompliance(),
             'threat_modeling' => $this->modelThreats(),
             'report_generation' => $this->generateReport()
         };
@@ -84,22 +84,22 @@ class SecurityAuditSession extends BaseSession
         $message = new AgentMessage(
             senderId: $this->sessionId,
             content: json_encode([
-                'task' => 'vulnerability_scanning',
+                'task' => 'vulnerability_scan',
                 'context' => [
                     'scan_targets' => $this->configuration['scan_targets'],
-                    'scan_depth' => $this->configuration['scan_depth'],
-                    'exclusions' => $this->configuration['scan_exclusions']
+                    'scan_rules' => $this->configuration['scan_rules'],
+                    'previous_findings' => $this->getPreviousFindings()
                 ]
             ]),
             metadata: [
                 'session_type' => 'security_audit',
-                'step' => 'vulnerability_scanning'
+                'step' => 'vulnerability_scan'
             ],
             requiredCapabilities: ['vulnerability_scanning', 'security_analysis']
         );
 
         $scan = $this->broker->routeMessageAndWait($message);
-        $this->findings->put('vulnerabilities', collect($scan['findings']));
+        $this->vulnerabilities = collect($scan['findings']);
 
         return $scan;
     }
@@ -111,64 +111,47 @@ class SecurityAuditSession extends BaseSession
             content: json_encode([
                 'task' => 'code_security_review',
                 'context' => [
-                    'codebase' => $this->configuration['codebase_path'],
-                    'security_patterns' => $this->getSecurityPatterns(),
+                    'code_patterns' => $this->getCodePatterns(),
+                    'security_rules' => $this->configuration['security_rules'],
                     'known_vulnerabilities' => $this->getKnownVulnerabilities()
                 ]
             ]),
             metadata: ['step' => 'code_security_review'],
-            requiredCapabilities: ['code_analysis', 'security_patterns']
+            requiredCapabilities: ['code_analysis', 'security_assessment']
         ));
     }
 
-    private function reviewConfiguration(): array
+    private function auditConfiguration(): array
     {
         return $this->broker->routeMessageAndWait(new AgentMessage(
             senderId: $this->sessionId,
             content: json_encode([
-                'task' => 'configuration_review',
+                'task' => 'configuration_audit',
                 'context' => [
                     'config_files' => $this->getConfigurationFiles(),
-                    'security_settings' => $this->getSecuritySettings(),
-                    'environment_configs' => $this->getEnvironmentConfigs()
+                    'security_baselines' => $this->configuration['security_baselines'],
+                    'environment_settings' => $this->getEnvironmentSettings()
                 ]
             ]),
-            metadata: ['step' => 'configuration_review'],
-            requiredCapabilities: ['configuration_analysis', 'security_hardening']
+            metadata: ['step' => 'configuration_audit'],
+            requiredCapabilities: ['configuration_analysis', 'security_audit']
         ));
     }
 
-    private function auditAccessControl(): array
+    private function reviewAccessControl(): array
     {
         return $this->broker->routeMessageAndWait(new AgentMessage(
             senderId: $this->sessionId,
             content: json_encode([
-                'task' => 'access_control_audit',
+                'task' => 'access_control_review',
                 'context' => [
-                    'permissions' => $this->getPermissionsMatrix(),
-                    'roles' => $this->getRoleDefinitions(),
-                    'authentication_methods' => $this->getAuthenticationMethods()
+                    'access_policies' => $this->getAccessPolicies(),
+                    'role_definitions' => $this->configuration['role_definitions'],
+                    'permission_mappings' => $this->getPermissionMappings()
                 ]
             ]),
-            metadata: ['step' => 'access_control_audit'],
-            requiredCapabilities: ['access_control', 'authentication_security']
-        ));
-    }
-
-    private function reviewEncryption(): array
-    {
-        return $this->broker->routeMessageAndWait(new AgentMessage(
-            senderId: $this->sessionId,
-            content: json_encode([
-                'task' => 'encryption_review',
-                'context' => [
-                    'encryption_methods' => $this->getEncryptionMethods(),
-                    'key_management' => $this->getKeyManagement(),
-                    'data_classification' => $this->getDataClassification()
-                ]
-            ]),
-            metadata: ['step' => 'encryption_review'],
-            requiredCapabilities: ['encryption_analysis', 'cryptography']
+            metadata: ['step' => 'access_control_review'],
+            requiredCapabilities: ['access_control_analysis', 'security_assessment']
         ));
     }
 
@@ -179,9 +162,9 @@ class SecurityAuditSession extends BaseSession
             content: json_encode([
                 'task' => 'dependency_analysis',
                 'context' => [
-                    'dependencies' => $this->getDependencyList(),
-                    'known_vulnerabilities' => $this->getDependencyVulnerabilities(),
-                    'update_status' => $this->getDependencyUpdates()
+                    'dependencies' => $this->getDependencies(),
+                    'known_vulnerabilities' => $this->getVulnerabilityDatabase(),
+                    'update_requirements' => $this->configuration['update_requirements']
                 ]
             ]),
             metadata: ['step' => 'dependency_analysis'],
@@ -189,57 +172,80 @@ class SecurityAuditSession extends BaseSession
         ));
     }
 
-    private function verifyCompliance(): array
+    private function assessEncryption(): array
     {
         return $this->broker->routeMessageAndWait(new AgentMessage(
             senderId: $this->sessionId,
             content: json_encode([
-                'task' => 'compliance_verification',
+                'task' => 'encryption_assessment',
                 'context' => [
-                    'compliance_standards' => $this->configuration['compliance_standards'],
-                    'audit_requirements' => $this->configuration['audit_requirements'],
-                    'previous_audits' => $this->getPreviousAudits()
+                    'encryption_config' => $this->configuration['encryption_config'],
+                    'key_management' => $this->getKeyManagement(),
+                    'crypto_implementations' => $this->getCryptoImplementations()
                 ]
             ]),
-            metadata: ['step' => 'compliance_verification'],
-            requiredCapabilities: ['compliance_assessment', 'security_standards']
+            metadata: ['step' => 'encryption_assessment'],
+            requiredCapabilities: ['encryption_analysis', 'security_assessment']
         ));
+    }
+
+    private function checkCompliance(): array
+    {
+        $compliance = $this->broker->routeMessageAndWait(new AgentMessage(
+            senderId: $this->sessionId,
+            content: json_encode([
+                'task' => 'compliance_check',
+                'context' => [
+                    'compliance_requirements' => $this->configuration['compliance_requirements'],
+                    'audit_evidence' => $this->getAuditEvidence(),
+                    'control_mappings' => $this->getControlMappings()
+                ]
+            ]),
+            metadata: ['step' => 'compliance_check'],
+            requiredCapabilities: ['compliance_assessment', 'regulatory_analysis']
+        ));
+
+        $this->assessments = collect($compliance['assessments']);
+        return $compliance;
     }
 
     private function modelThreats(): array
     {
-        return $this->broker->routeMessageAndWait(new AgentMessage(
+        $threats = $this->broker->routeMessageAndWait(new AgentMessage(
             senderId: $this->sessionId,
             content: json_encode([
                 'task' => 'threat_modeling',
                 'context' => [
                     'system_architecture' => $this->getSystemArchitecture(),
-                    'data_flows' => $this->getDataFlows(),
-                    'threat_patterns' => $this->getThreatPatterns()
+                    'threat_patterns' => $this->configuration['threat_patterns'],
+                    'risk_levels' => $this->configuration['risk_levels']
                 ]
             ]),
             metadata: ['step' => 'threat_modeling'],
             requiredCapabilities: ['threat_modeling', 'risk_assessment']
         ));
+
+        $this->recommendations = collect($threats['recommendations']);
+        return $threats;
     }
 
     private function generateReport(): array
     {
         $report = [
             'summary' => $this->generateSummary(),
-            'findings' => $this->findings->toArray(),
-            'metrics' => $this->metrics->toArray(),
-            'recommendations' => $this->recommendations->toArray(),
-            'compliance_status' => $this->getStepArtifacts('compliance_verification'),
-            'threat_model' => $this->getStepArtifacts('threat_modeling')
+            'vulnerability_assessment' => $this->generateVulnerabilityAssessment(),
+            'security_analysis' => $this->generateSecurityAnalysis(),
+            'compliance_assessment' => $this->generateComplianceAssessment(),
+            'recommendations' => $this->generateRecommendations()
         ];
 
-        SecurityReport::create([
+        AuditReport::create([
             'session_id' => $this->sessionId,
+            'type' => 'security',
             'content' => $report,
             'metadata' => [
-                'audit_date' => now(),
-                'audit_type' => $this->configuration['audit_type'],
+                'application' => $this->configuration['application_name'],
+                'timestamp' => now(),
                 'version' => $this->configuration['version'] ?? '1.0.0'
             ]
         ]);
@@ -250,88 +256,51 @@ class SecurityAuditSession extends BaseSession
     private function generateSummary(): array
     {
         return [
-            'risk_level' => $this->calculateRiskLevel(),
-            'vulnerability_metrics' => $this->calculateVulnerabilityMetrics(),
-            'compliance_status' => $this->getComplianceStatus(),
-            'security_score' => $this->calculateSecurityScore(),
+            'risk_overview' => $this->summarizeRisks(),
             'critical_findings' => $this->summarizeCriticalFindings(),
-            'improvement_metrics' => $this->calculateImprovementMetrics()
+            'compliance_status' => $this->summarizeComplianceStatus(),
+            'security_posture' => $this->summarizeSecurityPosture(),
+            'key_metrics' => $this->summarizeKeyMetrics()
         ];
     }
 
-    private function calculateRiskLevel(): string
-    {
-        $criticalCount = $this->findings->get('vulnerabilities', collect())
-            ->where('severity', 'critical')
-            ->count();
-
-        return match(true) {
-            $criticalCount > 5 => 'critical',
-            $criticalCount > 2 => 'high',
-            $criticalCount > 0 => 'medium',
-            default => 'low'
-        };
-    }
-
-    private function calculateVulnerabilityMetrics(): array
-    {
-        $vulnerabilities = $this->findings->get('vulnerabilities', collect());
-
-        return [
-            'total' => $vulnerabilities->count(),
-            'by_severity' => $vulnerabilities->groupBy('severity')->map->count(),
-            'by_type' => $vulnerabilities->groupBy('type')->map->count(),
-            'by_status' => $vulnerabilities->groupBy('status')->map->count()
-        ];
-    }
-
-    private function getComplianceStatus(): array
-    {
-        $compliance = $this->getStepArtifacts('compliance_verification');
-        return [
-            'status' => $compliance['status'] ?? 'unknown',
-            'standards' => $compliance['standards'] ?? [],
-            'gaps' => $compliance['gaps'] ?? [],
-            'remediation_required' => $compliance['remediation_required'] ?? true
-        ];
-    }
-
-    private function calculateSecurityScore(): float
-    {
-        $weights = [
-            'vulnerabilities' => 0.3,
-            'configuration' => 0.2,
-            'access_control' => 0.2,
-            'encryption' => 0.15,
-            'compliance' => 0.15
-        ];
-
-        return collect($weights)
-            ->map(fn($weight, $metric) => $weight * ($this->metrics->get("{$metric}_score") ?? 0))
-            ->sum();
-    }
-
-    private function summarizeCriticalFindings(): array
-    {
-        return $this->findings->get('vulnerabilities', collect())
-            ->where('severity', 'critical')
-            ->values()
-            ->map(fn($finding) => [
-                'id' => $finding['id'],
-                'type' => $finding['type'],
-                'description' => $finding['description'],
-                'impact' => $finding['impact'],
-                'remediation' => $finding['remediation']
-            ])
-            ->toArray();
-    }
-
-    private function calculateImprovementMetrics(): array
+    private function generateVulnerabilityAssessment(): array
     {
         return [
-            'remediation_progress' => $this->calculateRemediationProgress(),
-            'security_posture_trend' => $this->calculateSecurityTrend(),
-            'risk_reduction' => $this->calculateRiskReduction()
+            'vulnerability_findings' => $this->analyzeVulnerabilities(),
+            'risk_assessment' => $this->assessRisks(),
+            'attack_vectors' => $this->analyzeAttackVectors(),
+            'mitigation_status' => $this->assessMitigationStatus()
+        ];
+    }
+
+    private function generateSecurityAnalysis(): array
+    {
+        return [
+            'code_security' => $this->analyzeCodeSecurity(),
+            'configuration_security' => $this->analyzeConfigurationSecurity(),
+            'access_control' => $this->analyzeAccessControl(),
+            'encryption_analysis' => $this->analyzeEncryption()
+        ];
+    }
+
+    private function generateComplianceAssessment(): array
+    {
+        return [
+            'compliance_status' => $this->assessComplianceStatus(),
+            'control_effectiveness' => $this->assessControlEffectiveness(),
+            'gap_analysis' => $this->analyzeComplianceGaps(),
+            'remediation_requirements' => $this->identifyRemediationRequirements()
+        ];
+    }
+
+    private function generateRecommendations(): array
+    {
+        return [
+            'immediate_actions' => $this->recommendImmediateActions(),
+            'short_term_improvements' => $this->recommendShortTermImprovements(),
+            'long_term_strategy' => $this->recommendLongTermStrategy(),
+            'security_roadmap' => $this->createSecurityRoadmap()
         ];
     }
 
@@ -356,14 +325,14 @@ class SecurityAuditSession extends BaseSession
             ?->content;
     }
 
-    public function getFindings(): Collection
+    public function getVulnerabilities(): Collection
     {
-        return $this->findings;
+        return $this->vulnerabilities;
     }
 
-    public function getMetrics(): Collection
+    public function getAssessments(): Collection
     {
-        return $this->metrics;
+        return $this->assessments;
     }
 
     public function getRecommendations(): Collection
@@ -371,26 +340,40 @@ class SecurityAuditSession extends BaseSession
         return $this->recommendations;
     }
 
-    // Placeholder methods for data gathering - would be implemented based on specific security tools and systems
-    private function getSecurityPatterns(): array { return []; }
+    // Placeholder methods for data gathering - would be implemented based on specific security tools
+    private function getPreviousFindings(): array { return []; }
+    private function getCodePatterns(): array { return []; }
     private function getKnownVulnerabilities(): array { return []; }
     private function getConfigurationFiles(): array { return []; }
-    private function getSecuritySettings(): array { return []; }
-    private function getEnvironmentConfigs(): array { return []; }
-    private function getPermissionsMatrix(): array { return []; }
-    private function getRoleDefinitions(): array { return []; }
-    private function getAuthenticationMethods(): array { return []; }
-    private function getEncryptionMethods(): array { return []; }
+    private function getEnvironmentSettings(): array { return []; }
+    private function getAccessPolicies(): array { return []; }
+    private function getPermissionMappings(): array { return []; }
+    private function getDependencies(): array { return []; }
+    private function getVulnerabilityDatabase(): array { return []; }
     private function getKeyManagement(): array { return []; }
-    private function getDataClassification(): array { return []; }
-    private function getDependencyList(): array { return []; }
-    private function getDependencyVulnerabilities(): array { return []; }
-    private function getDependencyUpdates(): array { return []; }
-    private function getPreviousAudits(): array { return []; }
+    private function getCryptoImplementations(): array { return []; }
+    private function getAuditEvidence(): array { return []; }
+    private function getControlMappings(): array { return []; }
     private function getSystemArchitecture(): array { return []; }
-    private function getDataFlows(): array { return []; }
-    private function getThreatPatterns(): array { return []; }
-    private function calculateRemediationProgress(): float { return 0.0; }
-    private function calculateSecurityTrend(): array { return []; }
-    private function calculateRiskReduction(): array { return []; }
+    private function summarizeRisks(): array { return []; }
+    private function summarizeCriticalFindings(): array { return []; }
+    private function summarizeComplianceStatus(): array { return []; }
+    private function summarizeSecurityPosture(): array { return []; }
+    private function summarizeKeyMetrics(): array { return []; }
+    private function analyzeVulnerabilities(): array { return []; }
+    private function assessRisks(): array { return []; }
+    private function analyzeAttackVectors(): array { return []; }
+    private function assessMitigationStatus(): array { return []; }
+    private function analyzeCodeSecurity(): array { return []; }
+    private function analyzeConfigurationSecurity(): array { return []; }
+    private function analyzeAccessControl(): array { return []; }
+    private function analyzeEncryption(): array { return []; }
+    private function assessComplianceStatus(): array { return []; }
+    private function assessControlEffectiveness(): array { return []; }
+    private function analyzeComplianceGaps(): array { return []; }
+    private function identifyRemediationRequirements(): array { return []; }
+    private function recommendImmediateActions(): array { return []; }
+    private function recommendShortTermImprovements(): array { return []; }
+    private function recommendLongTermStrategy(): array { return []; }
+    private function createSecurityRoadmap(): array { return []; }
 }

@@ -10,7 +10,7 @@ use Illuminate\Support\Collection;
 class PerformanceOptimizationSession extends BaseSession
 {
     /**
-     * Performance metrics and analysis results.
+     * Performance metrics and analysis.
      *
      * @var Collection
      */
@@ -45,13 +45,13 @@ class PerformanceOptimizationSession extends BaseSession
         $this->status = 'performance_optimization';
 
         $steps = [
-            'baseline_analysis',
-            'bottleneck_identification',
-            'resource_analysis',
+            'baseline_profiling',
+            'bottleneck_analysis',
+            'resource_monitoring',
             'code_profiling',
             'database_analysis',
-            'network_analysis',
-            'caching_analysis',
+            'caching_assessment',
+            'load_testing',
             'optimization_planning',
             'report_generation'
         ];
@@ -65,13 +65,13 @@ class PerformanceOptimizationSession extends BaseSession
     protected function processStep(string $step): void
     {
         $stepResult = match($step) {
-            'baseline_analysis' => $this->analyzeBaseline(),
-            'bottleneck_identification' => $this->identifyBottlenecks(),
-            'resource_analysis' => $this->analyzeResources(),
+            'baseline_profiling' => $this->profileBaseline(),
+            'bottleneck_analysis' => $this->analyzeBottlenecks(),
+            'resource_monitoring' => $this->monitorResources(),
             'code_profiling' => $this->profileCode(),
             'database_analysis' => $this->analyzeDatabase(),
-            'network_analysis' => $this->analyzeNetwork(),
-            'caching_analysis' => $this->analyzeCaching(),
+            'caching_assessment' => $this->assessCaching(),
+            'load_testing' => $this->testLoad(),
             'optimization_planning' => $this->planOptimizations(),
             'report_generation' => $this->generateReport()
         };
@@ -79,62 +79,62 @@ class PerformanceOptimizationSession extends BaseSession
         $this->storeStepArtifacts($step, $stepResult);
     }
 
-    private function analyzeBaseline(): array
+    private function profileBaseline(): array
     {
         $message = new AgentMessage(
             senderId: $this->sessionId,
             content: json_encode([
-                'task' => 'baseline_performance_analysis',
+                'task' => 'baseline_profiling',
                 'context' => [
-                    'metrics' => $this->getPerformanceMetrics(),
-                    'thresholds' => $this->configuration['performance_thresholds'],
-                    'requirements' => $this->configuration['performance_requirements']
+                    'application_metrics' => $this->getApplicationMetrics(),
+                    'performance_thresholds' => $this->configuration['performance_thresholds'],
+                    'baseline_data' => $this->getBaselineData()
                 ]
             ]),
             metadata: [
                 'session_type' => 'performance_optimization',
-                'step' => 'baseline_analysis'
+                'step' => 'baseline_profiling'
             ],
-            requiredCapabilities: ['performance_analysis', 'metrics_analysis']
+            requiredCapabilities: ['performance_profiling', 'metrics_analysis']
         );
 
-        $analysis = $this->broker->routeMessageAndWait($message);
-        $this->metrics->put('baseline', $analysis['metrics']);
+        $profile = $this->broker->routeMessageAndWait($message);
+        $this->metrics = collect($profile['metrics']);
 
-        return $analysis;
+        return $profile;
     }
 
-    private function identifyBottlenecks(): array
+    private function analyzeBottlenecks(): array
     {
         return $this->broker->routeMessageAndWait(new AgentMessage(
             senderId: $this->sessionId,
             content: json_encode([
-                'task' => 'bottleneck_identification',
-                'baseline' => $this->metrics->get('baseline'),
+                'task' => 'bottleneck_analysis',
                 'context' => [
-                    'load_patterns' => $this->getLoadPatterns(),
-                    'error_patterns' => $this->getErrorPatterns()
+                    'performance_metrics' => $this->metrics->toArray(),
+                    'system_resources' => $this->getSystemResources(),
+                    'performance_logs' => $this->getPerformanceLogs()
                 ]
             ]),
-            metadata: ['step' => 'bottleneck_identification'],
-            requiredCapabilities: ['performance_analysis', 'bottleneck_detection']
+            metadata: ['step' => 'bottleneck_analysis'],
+            requiredCapabilities: ['bottleneck_detection', 'performance_analysis']
         ));
     }
 
-    private function analyzeResources(): array
+    private function monitorResources(): array
     {
         return $this->broker->routeMessageAndWait(new AgentMessage(
             senderId: $this->sessionId,
             content: json_encode([
-                'task' => 'resource_analysis',
+                'task' => 'resource_monitoring',
                 'context' => [
-                    'cpu_metrics' => $this->getCpuMetrics(),
-                    'memory_metrics' => $this->getMemoryMetrics(),
-                    'disk_metrics' => $this->getDiskMetrics()
+                    'resource_usage' => $this->getResourceUsage(),
+                    'monitoring_config' => $this->configuration['monitoring_config'],
+                    'resource_limits' => $this->getResourceLimits()
                 ]
             ]),
-            metadata: ['step' => 'resource_analysis'],
-            requiredCapabilities: ['resource_analysis', 'capacity_planning']
+            metadata: ['step' => 'resource_monitoring'],
+            requiredCapabilities: ['resource_monitoring', 'system_analysis']
         ));
     }
 
@@ -145,9 +145,9 @@ class PerformanceOptimizationSession extends BaseSession
             content: json_encode([
                 'task' => 'code_profiling',
                 'context' => [
+                    'code_metrics' => $this->getCodeMetrics(),
                     'profiling_data' => $this->getProfilingData(),
-                    'hot_paths' => $this->getHotPaths(),
-                    'memory_usage' => $this->getMemoryUsage()
+                    'execution_traces' => $this->getExecutionTraces()
                 ]
             ]),
             metadata: ['step' => 'code_profiling'],
@@ -163,47 +163,50 @@ class PerformanceOptimizationSession extends BaseSession
                 'task' => 'database_analysis',
                 'context' => [
                     'query_metrics' => $this->getQueryMetrics(),
-                    'index_usage' => $this->getIndexUsage(),
-                    'table_statistics' => $this->getTableStatistics()
+                    'database_config' => $this->configuration['database_config'],
+                    'query_plans' => $this->getQueryPlans()
                 ]
             ]),
             metadata: ['step' => 'database_analysis'],
-            requiredCapabilities: ['database_optimization', 'query_analysis']
+            requiredCapabilities: ['database_analysis', 'query_optimization']
         ));
     }
 
-    private function analyzeNetwork(): array
+    private function assessCaching(): array
     {
         return $this->broker->routeMessageAndWait(new AgentMessage(
             senderId: $this->sessionId,
             content: json_encode([
-                'task' => 'network_analysis',
+                'task' => 'caching_assessment',
                 'context' => [
-                    'network_metrics' => $this->getNetworkMetrics(),
-                    'latency_data' => $this->getLatencyData(),
-                    'bandwidth_usage' => $this->getBandwidthUsage()
+                    'cache_config' => $this->configuration['cache_config'],
+                    'cache_stats' => $this->getCacheStats(),
+                    'cache_usage' => $this->getCacheUsage()
                 ]
             ]),
-            metadata: ['step' => 'network_analysis'],
-            requiredCapabilities: ['network_analysis', 'latency_optimization']
+            metadata: ['step' => 'caching_assessment'],
+            requiredCapabilities: ['cache_analysis', 'performance_tuning']
         ));
     }
 
-    private function analyzeCaching(): array
+    private function testLoad(): array
     {
-        return $this->broker->routeMessageAndWait(new AgentMessage(
+        $loadTest = $this->broker->routeMessageAndWait(new AgentMessage(
             senderId: $this->sessionId,
             content: json_encode([
-                'task' => 'caching_analysis',
+                'task' => 'load_testing',
                 'context' => [
-                    'cache_metrics' => $this->getCacheMetrics(),
-                    'hit_rates' => $this->getCacheHitRates(),
-                    'cache_sizes' => $this->getCacheSizes()
+                    'test_scenarios' => $this->configuration['test_scenarios'],
+                    'load_parameters' => $this->getLoadParameters(),
+                    'performance_targets' => $this->configuration['performance_targets']
                 ]
             ]),
-            metadata: ['step' => 'caching_analysis'],
-            requiredCapabilities: ['cache_optimization', 'performance_tuning']
+            metadata: ['step' => 'load_testing'],
+            requiredCapabilities: ['load_testing', 'performance_measurement']
         ));
+
+        $this->benchmarks = collect($loadTest['benchmarks']);
+        return $loadTest;
     }
 
     private function planOptimizations(): array
@@ -212,15 +215,14 @@ class PerformanceOptimizationSession extends BaseSession
             senderId: $this->sessionId,
             content: json_encode([
                 'task' => 'optimization_planning',
-                'metrics' => $this->metrics->toArray(),
                 'context' => [
-                    'priority' => $this->configuration['priority'] ?? 'high',
-                    'constraints' => $this->configuration['constraints'] ?? [],
-                    'budget' => $this->configuration['optimization_budget']
+                    'performance_data' => $this->metrics->toArray(),
+                    'bottlenecks' => $this->getStepArtifacts('bottleneck_analysis'),
+                    'optimization_goals' => $this->configuration['optimization_goals']
                 ]
             ]),
             metadata: ['step' => 'optimization_planning'],
-            requiredCapabilities: ['optimization_planning', 'resource_management']
+            requiredCapabilities: ['optimization_planning', 'performance_tuning']
         ));
 
         $this->recommendations = collect($plan['recommendations']);
@@ -231,10 +233,10 @@ class PerformanceOptimizationSession extends BaseSession
     {
         $report = [
             'summary' => $this->generateSummary(),
-            'metrics' => $this->metrics->toArray(),
-            'recommendations' => $this->recommendations->toArray(),
-            'benchmarks' => $this->benchmarks->toArray(),
-            'impact_analysis' => $this->analyzeImpact()
+            'performance_analysis' => $this->generatePerformanceAnalysis(),
+            'optimization_recommendations' => $this->generateOptimizationRecommendations(),
+            'implementation_plan' => $this->generateImplementationPlan(),
+            'benchmarks' => $this->generateBenchmarkResults()
         ];
 
         OptimizationReport::create([
@@ -242,7 +244,7 @@ class PerformanceOptimizationSession extends BaseSession
             'type' => 'performance',
             'content' => $report,
             'metadata' => [
-                'environment' => $this->configuration['environment'],
+                'application' => $this->configuration['application_name'],
                 'timestamp' => now(),
                 'version' => $this->configuration['version'] ?? '1.0.0'
             ]
@@ -254,87 +256,51 @@ class PerformanceOptimizationSession extends BaseSession
     private function generateSummary(): array
     {
         return [
-            'performance_score' => $this->calculatePerformanceScore(),
-            'critical_issues' => $this->countCriticalIssues(),
-            'optimization_opportunities' => $this->countOptimizationOpportunities(),
-            'resource_efficiency' => $this->calculateResourceEfficiency(),
-            'estimated_improvements' => $this->estimateImprovements(),
-            'implementation_effort' => $this->calculateImplementationEffort()
+            'performance_overview' => $this->summarizePerformance(),
+            'critical_issues' => $this->identifyCriticalIssues(),
+            'optimization_impact' => $this->assessOptimizationImpact(),
+            'resource_utilization' => $this->summarizeResourceUtilization(),
+            'key_metrics' => $this->summarizeKeyMetrics()
         ];
     }
 
-    private function calculatePerformanceScore(): float
-    {
-        $weights = [
-            'response_time' => 0.3,
-            'resource_usage' => 0.2,
-            'throughput' => 0.2,
-            'error_rate' => 0.15,
-            'scalability' => 0.15
-        ];
-
-        return collect($weights)
-            ->map(fn($weight, $metric) => $weight * ($this->metrics->get("baseline.{$metric}_score") ?? 0))
-            ->sum();
-    }
-
-    private function countCriticalIssues(): int
-    {
-        return $this->recommendations
-            ->where('severity', 'critical')
-            ->count();
-    }
-
-    private function countOptimizationOpportunities(): int
-    {
-        return $this->recommendations->count();
-    }
-
-    private function calculateResourceEfficiency(): array
+    private function generatePerformanceAnalysis(): array
     {
         return [
-            'cpu_efficiency' => $this->calculateEfficiencyScore('cpu'),
-            'memory_efficiency' => $this->calculateEfficiencyScore('memory'),
-            'disk_efficiency' => $this->calculateEfficiencyScore('disk'),
-            'network_efficiency' => $this->calculateEfficiencyScore('network')
+            'bottleneck_analysis' => $this->analyzePerformanceBottlenecks(),
+            'resource_analysis' => $this->analyzeResourceUsage(),
+            'code_analysis' => $this->analyzeCodePerformance(),
+            'database_analysis' => $this->analyzeDatabasePerformance()
         ];
     }
 
-    private function calculateEfficiencyScore(string $resource): float
-    {
-        $metrics = $this->metrics->get("resource.{$resource}") ?? [];
-        return empty($metrics) ? 0.0 :
-            ($metrics['utilization'] ?? 0) * ($metrics['effectiveness'] ?? 0);
-    }
-
-    private function estimateImprovements(): array
+    private function generateOptimizationRecommendations(): array
     {
         return [
-            'response_time' => $this->estimateImprovement('response_time'),
-            'throughput' => $this->estimateImprovement('throughput'),
-            'resource_usage' => $this->estimateImprovement('resource_usage'),
-            'cost_savings' => $this->estimateImprovement('cost')
+            'code_optimizations' => $this->recommendCodeOptimizations(),
+            'database_optimizations' => $this->recommendDatabaseOptimizations(),
+            'caching_improvements' => $this->recommendCachingImprovements(),
+            'resource_optimizations' => $this->recommendResourceOptimizations()
         ];
     }
 
-    private function estimateImprovement(string $metric): array
+    private function generateImplementationPlan(): array
     {
-        $recommendations = $this->recommendations->where('affects', $metric);
-
         return [
-            'min' => $recommendations->min('improvement.min') ?? 0,
-            'max' => $recommendations->max('improvement.max') ?? 0,
-            'average' => $recommendations->avg('improvement.expected') ?? 0
+            'immediate_actions' => $this->defineImmediateActions(),
+            'short_term_improvements' => $this->defineShortTermImprovements(),
+            'long_term_strategy' => $this->defineLongTermStrategy(),
+            'monitoring_plan' => $this->defineMonitoringPlan()
         ];
     }
 
-    private function calculateImplementationEffort(): array
+    private function generateBenchmarkResults(): array
     {
         return [
-            'time_estimate' => $this->estimateImplementationTime(),
-            'complexity' => $this->assessImplementationComplexity(),
-            'dependencies' => $this->identifyDependencies(),
-            'risks' => $this->assessImplementationRisks()
+            'load_test_results' => $this->analyzeBenchmarkResults(),
+            'performance_comparison' => $this->comparePerformanceMetrics(),
+            'scalability_analysis' => $this->analyzeScalability(),
+            'stability_metrics' => $this->analyzeStability()
         ];
     }
 
@@ -374,28 +340,40 @@ class PerformanceOptimizationSession extends BaseSession
         return $this->benchmarks;
     }
 
-    // Placeholder methods for data gathering - would be implemented based on specific monitoring systems
-    private function getPerformanceMetrics(): array { return []; }
-    private function getLoadPatterns(): array { return []; }
-    private function getErrorPatterns(): array { return []; }
-    private function getCpuMetrics(): array { return []; }
-    private function getMemoryMetrics(): array { return []; }
-    private function getDiskMetrics(): array { return []; }
+    // Placeholder methods for data gathering - would be implemented based on specific profiling and monitoring tools
+    private function getApplicationMetrics(): array { return []; }
+    private function getBaselineData(): array { return []; }
+    private function getSystemResources(): array { return []; }
+    private function getPerformanceLogs(): array { return []; }
+    private function getResourceUsage(): array { return []; }
+    private function getResourceLimits(): array { return []; }
+    private function getCodeMetrics(): array { return []; }
     private function getProfilingData(): array { return []; }
-    private function getHotPaths(): array { return []; }
-    private function getMemoryUsage(): array { return []; }
+    private function getExecutionTraces(): array { return []; }
     private function getQueryMetrics(): array { return []; }
-    private function getIndexUsage(): array { return []; }
-    private function getTableStatistics(): array { return []; }
-    private function getNetworkMetrics(): array { return []; }
-    private function getLatencyData(): array { return []; }
-    private function getBandwidthUsage(): array { return []; }
-    private function getCacheMetrics(): array { return []; }
-    private function getCacheHitRates(): array { return []; }
-    private function getCacheSizes(): array { return []; }
-    private function analyzeImpact(): array { return []; }
-    private function estimateImplementationTime(): array { return []; }
-    private function assessImplementationComplexity(): string { return 'medium'; }
-    private function identifyDependencies(): array { return []; }
-    private function assessImplementationRisks(): array { return []; }
+    private function getQueryPlans(): array { return []; }
+    private function getCacheStats(): array { return []; }
+    private function getCacheUsage(): array { return []; }
+    private function getLoadParameters(): array { return []; }
+    private function summarizePerformance(): array { return []; }
+    private function identifyCriticalIssues(): array { return []; }
+    private function assessOptimizationImpact(): array { return []; }
+    private function summarizeResourceUtilization(): array { return []; }
+    private function summarizeKeyMetrics(): array { return []; }
+    private function analyzePerformanceBottlenecks(): array { return []; }
+    private function analyzeResourceUsage(): array { return []; }
+    private function analyzeCodePerformance(): array { return []; }
+    private function analyzeDatabasePerformance(): array { return []; }
+    private function recommendCodeOptimizations(): array { return []; }
+    private function recommendDatabaseOptimizations(): array { return []; }
+    private function recommendCachingImprovements(): array { return []; }
+    private function recommendResourceOptimizations(): array { return []; }
+    private function defineImmediateActions(): array { return []; }
+    private function defineShortTermImprovements(): array { return []; }
+    private function defineLongTermStrategy(): array { return []; }
+    private function defineMonitoringPlan(): array { return []; }
+    private function analyzeBenchmarkResults(): array { return []; }
+    private function comparePerformanceMetrics(): array { return []; }
+    private function analyzeScalability(): array { return []; }
+    private function analyzeStability(): array { return []; }
 }

@@ -10,18 +10,18 @@ use Illuminate\Support\Collection;
 class DevOpsOptimizationSession extends BaseSession
 {
     /**
-     * Infrastructure metrics and analysis results.
+     * Pipeline metrics and analysis.
      *
      * @var Collection
      */
-    protected Collection $metrics;
+    protected Collection $pipelineMetrics;
 
     /**
-     * Pipeline configurations and analysis.
+     * Infrastructure analysis results.
      *
      * @var Collection
      */
-    protected Collection $pipelines;
+    protected Collection $infrastructureAnalysis;
 
     /**
      * Optimization recommendations.
@@ -35,8 +35,8 @@ class DevOpsOptimizationSession extends BaseSession
         protected readonly array $configuration = []
     ) {
         parent::__construct($broker, $configuration);
-        $this->metrics = collect();
-        $this->pipelines = collect();
+        $this->pipelineMetrics = collect();
+        $this->infrastructureAnalysis = collect();
         $this->recommendations = collect();
     }
 
@@ -45,14 +45,14 @@ class DevOpsOptimizationSession extends BaseSession
         $this->status = 'devops_optimization';
 
         $steps = [
-            'infrastructure_analysis',
             'pipeline_analysis',
+            'infrastructure_review',
+            'automation_assessment',
+            'monitoring_evaluation',
+            'security_review',
             'deployment_analysis',
-            'monitoring_analysis',
-            'security_analysis',
-            'cost_analysis',
-            'automation_analysis',
-            'optimization_planning',
+            'performance_optimization',
+            'cost_optimization',
             'report_generation'
         ];
 
@@ -65,65 +65,114 @@ class DevOpsOptimizationSession extends BaseSession
     protected function processStep(string $step): void
     {
         $stepResult = match($step) {
-            'infrastructure_analysis' => $this->analyzeInfrastructure(),
-            'pipeline_analysis' => $this->analyzePipelines(),
+            'pipeline_analysis' => $this->analyzePipeline(),
+            'infrastructure_review' => $this->reviewInfrastructure(),
+            'automation_assessment' => $this->assessAutomation(),
+            'monitoring_evaluation' => $this->evaluateMonitoring(),
+            'security_review' => $this->reviewSecurity(),
             'deployment_analysis' => $this->analyzeDeployments(),
-            'monitoring_analysis' => $this->analyzeMonitoring(),
-            'security_analysis' => $this->analyzeSecurity(),
-            'cost_analysis' => $this->analyzeCosts(),
-            'automation_analysis' => $this->analyzeAutomation(),
-            'optimization_planning' => $this->planOptimizations(),
+            'performance_optimization' => $this->optimizePerformance(),
+            'cost_optimization' => $this->optimizeCosts(),
             'report_generation' => $this->generateReport()
         };
 
         $this->storeStepArtifacts($step, $stepResult);
     }
 
-    private function analyzeInfrastructure(): array
+    private function analyzePipeline(): array
     {
         $message = new AgentMessage(
             senderId: $this->sessionId,
             content: json_encode([
-                'task' => 'infrastructure_analysis',
+                'task' => 'pipeline_analysis',
                 'context' => [
-                    'provider' => $this->configuration['cloud_provider'] ?? 'aws',
-                    'resources' => $this->getInfrastructureResources(),
-                    'metrics' => $this->getInfrastructureMetrics()
+                    'pipeline_config' => $this->configuration['pipeline_config'],
+                    'build_metrics' => $this->getBuildMetrics(),
+                    'deployment_metrics' => $this->getDeploymentMetrics()
                 ]
             ]),
             metadata: [
                 'session_type' => 'devops_optimization',
-                'step' => 'infrastructure_analysis'
+                'step' => 'pipeline_analysis'
             ],
-            requiredCapabilities: ['infrastructure_analysis', 'cloud_optimization']
+            requiredCapabilities: ['pipeline_analysis', 'ci_cd_optimization']
         );
 
         $analysis = $this->broker->routeMessageAndWait($message);
-        $this->metrics->put('infrastructure', $analysis['metrics']);
+        $this->pipelineMetrics = collect($analysis['metrics']);
 
         return $analysis;
     }
 
-    private function analyzePipelines(): array
+    private function reviewInfrastructure(): array
     {
-        $analysis = $this->broker->routeMessageAndWait(new AgentMessage(
+        $review = $this->broker->routeMessageAndWait(new AgentMessage(
             senderId: $this->sessionId,
             content: json_encode([
-                'task' => 'pipeline_analysis',
-                'pipelines' => $this->getPipelineConfigurations(),
+                'task' => 'infrastructure_review',
                 'context' => [
-                    'ci_system' => $this->configuration['ci_system'] ?? 'github-actions',
-                    'metrics' => $this->getPipelineMetrics()
+                    'infrastructure_config' => $this->configuration['infrastructure_config'],
+                    'resource_usage' => $this->getResourceUsage(),
+                    'scaling_patterns' => $this->getScalingPatterns()
                 ]
             ]),
-            metadata: ['step' => 'pipeline_analysis'],
-            requiredCapabilities: ['ci_cd_optimization', 'pipeline_analysis']
+            metadata: ['step' => 'infrastructure_review'],
+            requiredCapabilities: ['infrastructure_analysis', 'resource_optimization']
         ));
 
-        $this->metrics->put('pipelines', $analysis['metrics']);
-        $this->pipelines = collect($analysis['configurations']);
+        $this->infrastructureAnalysis = collect($review['analysis']);
+        return $review;
+    }
 
-        return $analysis;
+    private function assessAutomation(): array
+    {
+        return $this->broker->routeMessageAndWait(new AgentMessage(
+            senderId: $this->sessionId,
+            content: json_encode([
+                'task' => 'automation_assessment',
+                'context' => [
+                    'automation_scripts' => $this->getAutomationScripts(),
+                    'manual_processes' => $this->getManualProcesses(),
+                    'automation_metrics' => $this->getAutomationMetrics()
+                ]
+            ]),
+            metadata: ['step' => 'automation_assessment'],
+            requiredCapabilities: ['automation_analysis', 'process_optimization']
+        ));
+    }
+
+    private function evaluateMonitoring(): array
+    {
+        return $this->broker->routeMessageAndWait(new AgentMessage(
+            senderId: $this->sessionId,
+            content: json_encode([
+                'task' => 'monitoring_evaluation',
+                'context' => [
+                    'monitoring_config' => $this->configuration['monitoring_config'],
+                    'alert_rules' => $this->getAlertRules(),
+                    'monitoring_coverage' => $this->getMonitoringCoverage()
+                ]
+            ]),
+            metadata: ['step' => 'monitoring_evaluation'],
+            requiredCapabilities: ['monitoring_analysis', 'observability_optimization']
+        ));
+    }
+
+    private function reviewSecurity(): array
+    {
+        return $this->broker->routeMessageAndWait(new AgentMessage(
+            senderId: $this->sessionId,
+            content: json_encode([
+                'task' => 'security_review',
+                'context' => [
+                    'security_config' => $this->configuration['security_config'],
+                    'security_scans' => $this->getSecurityScans(),
+                    'compliance_requirements' => $this->configuration['compliance_requirements']
+                ]
+            ]),
+            metadata: ['step' => 'security_review'],
+            requiredCapabilities: ['security_analysis', 'compliance_assessment']
+        ));
     }
 
     private function analyzeDeployments(): array
@@ -132,99 +181,48 @@ class DevOpsOptimizationSession extends BaseSession
             senderId: $this->sessionId,
             content: json_encode([
                 'task' => 'deployment_analysis',
-                'deployments' => $this->getDeploymentHistory(),
                 'context' => [
-                    'deployment_strategy' => $this->configuration['deployment_strategy'],
-                    'environments' => $this->configuration['environments']
+                    'deployment_history' => $this->getDeploymentHistory(),
+                    'rollback_data' => $this->getRollbackData(),
+                    'deployment_strategies' => $this->configuration['deployment_strategies']
                 ]
             ]),
             metadata: ['step' => 'deployment_analysis'],
-            requiredCapabilities: ['deployment_optimization', 'release_management']
+            requiredCapabilities: ['deployment_analysis', 'release_management']
         ));
     }
 
-    private function analyzeMonitoring(): array
+    private function optimizePerformance(): array
     {
         return $this->broker->routeMessageAndWait(new AgentMessage(
             senderId: $this->sessionId,
             content: json_encode([
-                'task' => 'monitoring_analysis',
-                'monitoring' => $this->getMonitoringConfiguration(),
+                'task' => 'performance_optimization',
                 'context' => [
-                    'tools' => $this->configuration['monitoring_tools'],
-                    'alerts' => $this->getAlertConfiguration()
+                    'performance_metrics' => $this->getPerformanceMetrics(),
+                    'bottlenecks' => $this->getBottlenecks(),
+                    'optimization_targets' => $this->configuration['optimization_targets']
                 ]
             ]),
-            metadata: ['step' => 'monitoring_analysis'],
-            requiredCapabilities: ['monitoring_optimization', 'observability']
+            metadata: ['step' => 'performance_optimization'],
+            requiredCapabilities: ['performance_optimization', 'resource_management']
         ));
     }
 
-    private function analyzeSecurity(): array
+    private function optimizeCosts(): array
     {
         return $this->broker->routeMessageAndWait(new AgentMessage(
             senderId: $this->sessionId,
             content: json_encode([
-                'task' => 'security_analysis',
-                'security' => $this->getSecurityConfiguration(),
+                'task' => 'cost_optimization',
                 'context' => [
-                    'compliance' => $this->configuration['compliance_requirements'],
-                    'policies' => $this->getSecurityPolicies()
+                    'cost_data' => $this->getCostData(),
+                    'resource_allocation' => $this->getResourceAllocation(),
+                    'budget_constraints' => $this->configuration['budget_constraints']
                 ]
             ]),
-            metadata: ['step' => 'security_analysis'],
-            requiredCapabilities: ['security_optimization', 'compliance_analysis']
-        ));
-    }
-
-    private function analyzeCosts(): array
-    {
-        return $this->broker->routeMessageAndWait(new AgentMessage(
-            senderId: $this->sessionId,
-            content: json_encode([
-                'task' => 'cost_analysis',
-                'costs' => $this->getCostData(),
-                'context' => [
-                    'budget' => $this->configuration['budget'],
-                    'constraints' => $this->configuration['cost_constraints']
-                ]
-            ]),
-            metadata: ['step' => 'cost_analysis'],
-            requiredCapabilities: ['cost_optimization', 'resource_management']
-        ));
-    }
-
-    private function analyzeAutomation(): array
-    {
-        return $this->broker->routeMessageAndWait(new AgentMessage(
-            senderId: $this->sessionId,
-            content: json_encode([
-                'task' => 'automation_analysis',
-                'automation' => $this->getAutomationConfiguration(),
-                'context' => [
-                    'tools' => $this->configuration['automation_tools'],
-                    'workflows' => $this->getAutomationWorkflows()
-                ]
-            ]),
-            metadata: ['step' => 'automation_analysis'],
-            requiredCapabilities: ['automation_optimization', 'workflow_analysis']
-        ));
-    }
-
-    private function planOptimizations(): array
-    {
-        return $this->broker->routeMessageAndWait(new AgentMessage(
-            senderId: $this->sessionId,
-            content: json_encode([
-                'task' => 'optimization_planning',
-                'metrics' => $this->metrics->toArray(),
-                'context' => [
-                    'priority' => $this->configuration['priority'] ?? 'high',
-                    'constraints' => $this->configuration['constraints'] ?? []
-                ]
-            ]),
-            metadata: ['step' => 'optimization_planning'],
-            requiredCapabilities: ['optimization_planning', 'resource_management']
+            metadata: ['step' => 'cost_optimization'],
+            requiredCapabilities: ['cost_optimization', 'resource_planning']
         ));
     }
 
@@ -232,10 +230,10 @@ class DevOpsOptimizationSession extends BaseSession
     {
         $report = [
             'summary' => $this->generateSummary(),
-            'metrics' => $this->metrics->toArray(),
-            'recommendations' => $this->recommendations->toArray(),
-            'optimization_plan' => $this->getStepArtifacts('optimization_planning'),
-            'impact_analysis' => $this->analyzeImpact()
+            'pipeline_analysis' => $this->generatePipelineAnalysis(),
+            'infrastructure_assessment' => $this->generateInfrastructureAssessment(),
+            'optimization_recommendations' => $this->generateOptimizationRecommendations(),
+            'action_plan' => $this->generateActionPlan()
         ];
 
         OptimizationReport::create([
@@ -243,7 +241,7 @@ class DevOpsOptimizationSession extends BaseSession
             'type' => 'devops',
             'content' => $report,
             'metadata' => [
-                'provider' => $this->configuration['cloud_provider'] ?? 'aws',
+                'environment' => $this->configuration['environment'],
                 'timestamp' => now(),
                 'version' => $this->configuration['version'] ?? '1.0.0'
             ]
@@ -255,96 +253,51 @@ class DevOpsOptimizationSession extends BaseSession
     private function generateSummary(): array
     {
         return [
-            'infrastructure_score' => $this->calculateInfrastructureScore(),
-            'pipeline_score' => $this->calculatePipelineScore(),
-            'security_score' => $this->calculateSecurityScore(),
-            'cost_efficiency' => $this->calculateCostEfficiency(),
-            'automation_level' => $this->calculateAutomationLevel(),
-            'optimization_opportunities' => $this->countOptimizationOpportunities(),
-            'estimated_impact' => $this->estimateOptimizationImpact(),
-            'resource_requirements' => $this->calculateResourceRequirements()
+            'pipeline_metrics' => $this->summarizePipelineMetrics(),
+            'infrastructure_status' => $this->summarizeInfrastructureStatus(),
+            'automation_level' => $this->assessAutomationLevel(),
+            'key_findings' => $this->summarizeKeyFindings(),
+            'optimization_impact' => $this->assessOptimizationImpact()
         ];
     }
 
-    private function calculateInfrastructureScore(): float
-    {
-        $weights = [
-            'reliability' => 0.3,
-            'scalability' => 0.3,
-            'performance' => 0.2,
-            'maintainability' => 0.2
-        ];
-
-        return $this->calculateWeightedScore($weights, 'infrastructure');
-    }
-
-    private function calculatePipelineScore(): float
-    {
-        $weights = [
-            'speed' => 0.3,
-            'reliability' => 0.3,
-            'coverage' => 0.2,
-            'efficiency' => 0.2
-        ];
-
-        return $this->calculateWeightedScore($weights, 'pipelines');
-    }
-
-    private function calculateSecurityScore(): float
-    {
-        $weights = [
-            'compliance' => 0.4,
-            'vulnerabilities' => 0.3,
-            'access_control' => 0.3
-        ];
-
-        return $this->calculateWeightedScore($weights, 'security');
-    }
-
-    private function calculateWeightedScore(array $weights, string $metric): float
-    {
-        return collect($weights)
-            ->map(fn($weight, $key) => $weight * ($this->metrics->get("{$metric}.{$key}_score") ?? 0))
-            ->sum();
-    }
-
-    private function calculateCostEfficiency(): float
-    {
-        // Implementation would calculate cost efficiency
-        return 0.0;
-    }
-
-    private function calculateAutomationLevel(): float
-    {
-        // Implementation would calculate automation level
-        return 0.0;
-    }
-
-    private function countOptimizationOpportunities(): int
-    {
-        return collect($this->metrics)
-            ->pluck('optimization_opportunities')
-            ->flatten()
-            ->unique()
-            ->count();
-    }
-
-    private function estimateOptimizationImpact(): array
+    private function generatePipelineAnalysis(): array
     {
         return [
-            'cost_reduction' => $this->estimateCostReduction(),
-            'performance_improvement' => $this->estimatePerformanceImprovement(),
-            'efficiency_gain' => $this->estimateEfficiencyGain()
+            'build_performance' => $this->analyzeBuildPerformance(),
+            'deployment_efficiency' => $this->analyzeDeploymentEfficiency(),
+            'test_coverage' => $this->analyzeTestCoverage(),
+            'bottlenecks' => $this->identifyPipelineBottlenecks()
         ];
     }
 
-    private function calculateResourceRequirements(): array
+    private function generateInfrastructureAssessment(): array
     {
         return [
-            'time_estimate' => $this->estimateImplementationTime(),
-            'complexity' => $this->assessImplementationComplexity(),
-            'dependencies' => $this->identifyDependencies(),
-            'risks' => $this->assessImplementationRisks()
+            'resource_utilization' => $this->analyzeResourceUtilization(),
+            'scaling_efficiency' => $this->analyzeScalingEfficiency(),
+            'cost_efficiency' => $this->analyzeCostEfficiency(),
+            'reliability_metrics' => $this->analyzeReliabilityMetrics()
+        ];
+    }
+
+    private function generateOptimizationRecommendations(): array
+    {
+        return [
+            'pipeline_improvements' => $this->recommendPipelineImprovements(),
+            'infrastructure_optimizations' => $this->recommendInfrastructureOptimizations(),
+            'automation_opportunities' => $this->identifyAutomationOpportunities(),
+            'cost_reduction_strategies' => $this->recommendCostReductions()
+        ];
+    }
+
+    private function generateActionPlan(): array
+    {
+        return [
+            'immediate_actions' => $this->defineImmediateActions(),
+            'short_term_improvements' => $this->defineShortTermImprovements(),
+            'long_term_strategy' => $this->defineLongTermStrategy(),
+            'monitoring_plan' => $this->defineMonitoringPlan()
         ];
     }
 
@@ -369,14 +322,14 @@ class DevOpsOptimizationSession extends BaseSession
             ?->content;
     }
 
-    public function getMetrics(): Collection
+    public function getPipelineMetrics(): Collection
     {
-        return $this->metrics;
+        return $this->pipelineMetrics;
     }
 
-    public function getPipelines(): Collection
+    public function getInfrastructureAnalysis(): Collection
     {
-        return $this->pipelines;
+        return $this->infrastructureAnalysis;
     }
 
     public function getRecommendations(): Collection
@@ -384,25 +337,42 @@ class DevOpsOptimizationSession extends BaseSession
         return $this->recommendations;
     }
 
-    // Placeholder methods for data gathering - would be implemented based on specific cloud providers and tools
-    private function getInfrastructureResources(): array { return []; }
-    private function getInfrastructureMetrics(): array { return []; }
-    private function getPipelineConfigurations(): array { return []; }
-    private function getPipelineMetrics(): array { return []; }
+    // Placeholder methods for data gathering - would be implemented based on specific DevOps tools
+    private function getBuildMetrics(): array { return []; }
+    private function getDeploymentMetrics(): array { return []; }
+    private function getResourceUsage(): array { return []; }
+    private function getScalingPatterns(): array { return []; }
+    private function getAutomationScripts(): array { return []; }
+    private function getManualProcesses(): array { return []; }
+    private function getAutomationMetrics(): array { return []; }
+    private function getAlertRules(): array { return []; }
+    private function getMonitoringCoverage(): array { return []; }
+    private function getSecurityScans(): array { return []; }
     private function getDeploymentHistory(): array { return []; }
-    private function getMonitoringConfiguration(): array { return []; }
-    private function getAlertConfiguration(): array { return []; }
-    private function getSecurityConfiguration(): array { return []; }
-    private function getSecurityPolicies(): array { return []; }
+    private function getRollbackData(): array { return []; }
+    private function getPerformanceMetrics(): array { return []; }
+    private function getBottlenecks(): array { return []; }
     private function getCostData(): array { return []; }
-    private function getAutomationConfiguration(): array { return []; }
-    private function getAutomationWorkflows(): array { return []; }
-    private function analyzeImpact(): array { return []; }
-    private function estimateCostReduction(): float { return 0.0; }
-    private function estimatePerformanceImprovement(): float { return 0.0; }
-    private function estimateEfficiencyGain(): float { return 0.0; }
-    private function estimateImplementationTime(): int { return 0; }
-    private function assessImplementationComplexity(): string { return 'medium'; }
-    private function identifyDependencies(): array { return []; }
-    private function assessImplementationRisks(): array { return []; }
+    private function getResourceAllocation(): array { return []; }
+    private function summarizePipelineMetrics(): array { return []; }
+    private function summarizeInfrastructureStatus(): array { return []; }
+    private function assessAutomationLevel(): array { return []; }
+    private function summarizeKeyFindings(): array { return []; }
+    private function assessOptimizationImpact(): array { return []; }
+    private function analyzeBuildPerformance(): array { return []; }
+    private function analyzeDeploymentEfficiency(): array { return []; }
+    private function analyzeTestCoverage(): array { return []; }
+    private function identifyPipelineBottlenecks(): array { return []; }
+    private function analyzeResourceUtilization(): array { return []; }
+    private function analyzeScalingEfficiency(): array { return []; }
+    private function analyzeCostEfficiency(): array { return []; }
+    private function analyzeReliabilityMetrics(): array { return []; }
+    private function recommendPipelineImprovements(): array { return []; }
+    private function recommendInfrastructureOptimizations(): array { return []; }
+    private function identifyAutomationOpportunities(): array { return []; }
+    private function recommendCostReductions(): array { return []; }
+    private function defineImmediateActions(): array { return []; }
+    private function defineShortTermImprovements(): array { return []; }
+    private function defineLongTermStrategy(): array { return []; }
+    private function defineMonitoringPlan(): array { return []; }
 }

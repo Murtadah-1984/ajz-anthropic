@@ -3,32 +3,32 @@
 namespace Ajz\Anthropic\AIAgents\Sessions;
 
 use Ajz\Anthropic\AIAgents\Communication\AgentMessage;
-use Ajz\Anthropic\Models\FeatureProposal;
+use Ajz\Anthropic\Models\FeatureReport;
 use Ajz\Anthropic\Models\SessionArtifact;
 use Illuminate\Support\Collection;
 
 class FeatureDiscoverySession extends BaseSession
 {
     /**
-     * Discovered features and ideas.
+     * Feature ideas and concepts.
      *
      * @var Collection
      */
     protected Collection $features;
 
     /**
-     * Market research and analysis results.
+     * Analysis and evaluation results.
      *
      * @var Collection
      */
-    protected Collection $research;
+    protected Collection $analysis;
 
     /**
-     * Feature evaluations and scores.
+     * Prioritized recommendations.
      *
      * @var Collection
      */
-    protected Collection $evaluations;
+    protected Collection $recommendations;
 
     public function __construct(
         protected readonly AgentMessageBroker $broker,
@@ -36,8 +36,8 @@ class FeatureDiscoverySession extends BaseSession
     ) {
         parent::__construct($broker, $configuration);
         $this->features = collect();
-        $this->research = collect();
-        $this->evaluations = collect();
+        $this->analysis = collect();
+        $this->recommendations = collect();
     }
 
     public function start(): void
@@ -48,10 +48,10 @@ class FeatureDiscoverySession extends BaseSession
             'market_research',
             'user_needs_analysis',
             'competitive_analysis',
-            'trend_analysis',
-            'brainstorming',
-            'feature_evaluation',
-            'feasibility_analysis',
+            'technical_feasibility',
+            'impact_assessment',
+            'cost_analysis',
+            'risk_evaluation',
             'prioritization',
             'report_generation'
         ];
@@ -65,13 +65,13 @@ class FeatureDiscoverySession extends BaseSession
     protected function processStep(string $step): void
     {
         $stepResult = match($step) {
-            'market_research' => $this->conductMarketResearch(),
+            'market_research' => $this->researchMarket(),
             'user_needs_analysis' => $this->analyzeUserNeeds(),
-            'competitive_analysis' => $this->analyzeCompetitors(),
-            'trend_analysis' => $this->analyzeTrends(),
-            'brainstorming' => $this->conductBrainstorming(),
-            'feature_evaluation' => $this->evaluateFeatures(),
-            'feasibility_analysis' => $this->analyzeFeasibility(),
+            'competitive_analysis' => $this->analyzeCompetition(),
+            'technical_feasibility' => $this->assessFeasibility(),
+            'impact_assessment' => $this->assessImpact(),
+            'cost_analysis' => $this->analyzeCosts(),
+            'risk_evaluation' => $this->evaluateRisks(),
             'prioritization' => $this->prioritizeFeatures(),
             'report_generation' => $this->generateReport()
         };
@@ -79,27 +79,27 @@ class FeatureDiscoverySession extends BaseSession
         $this->storeStepArtifacts($step, $stepResult);
     }
 
-    private function conductMarketResearch(): array
+    private function researchMarket(): array
     {
         $message = new AgentMessage(
             senderId: $this->sessionId,
             content: json_encode([
                 'task' => 'market_research',
                 'context' => [
-                    'industry' => $this->configuration['industry'],
-                    'target_market' => $this->configuration['target_market'],
-                    'market_segments' => $this->configuration['market_segments']
+                    'market_segment' => $this->configuration['market_segment'],
+                    'industry_trends' => $this->getIndustryTrends(),
+                    'market_data' => $this->getMarketData()
                 ]
             ]),
             metadata: [
                 'session_type' => 'feature_discovery',
                 'step' => 'market_research'
             ],
-            requiredCapabilities: ['market_analysis', 'research']
+            requiredCapabilities: ['market_analysis', 'trend_analysis']
         );
 
         $research = $this->broker->routeMessageAndWait($message);
-        $this->research->put('market', $research['findings']);
+        $this->features = collect($research['potential_features']);
 
         return $research;
     }
@@ -111,17 +111,17 @@ class FeatureDiscoverySession extends BaseSession
             content: json_encode([
                 'task' => 'user_needs_analysis',
                 'context' => [
-                    'user_segments' => $this->configuration['user_segments'],
                     'user_feedback' => $this->getUserFeedback(),
-                    'usage_data' => $this->getUsageData()
+                    'usage_patterns' => $this->getUsagePatterns(),
+                    'user_segments' => $this->configuration['user_segments']
                 ]
             ]),
             metadata: ['step' => 'user_needs_analysis'],
-            requiredCapabilities: ['user_research', 'data_analysis']
+            requiredCapabilities: ['user_research', 'needs_assessment']
         ));
     }
 
-    private function analyzeCompetitors(): array
+    private function analyzeCompetition(): array
     {
         return $this->broker->routeMessageAndWait(new AgentMessage(
             senderId: $this->sessionId,
@@ -129,7 +129,8 @@ class FeatureDiscoverySession extends BaseSession
                 'task' => 'competitive_analysis',
                 'context' => [
                     'competitors' => $this->configuration['competitors'],
-                    'market_data' => $this->research->get('market')
+                    'competitive_features' => $this->getCompetitiveFeatures(),
+                    'market_positioning' => $this->getMarketPositioning()
                 ]
             ]),
             metadata: ['step' => 'competitive_analysis'],
@@ -137,111 +138,112 @@ class FeatureDiscoverySession extends BaseSession
         ));
     }
 
-    private function analyzeTrends(): array
+    private function assessFeasibility(): array
     {
         return $this->broker->routeMessageAndWait(new AgentMessage(
             senderId: $this->sessionId,
             content: json_encode([
-                'task' => 'trend_analysis',
+                'task' => 'technical_feasibility',
                 'context' => [
-                    'industry_trends' => $this->getIndustryTrends(),
-                    'technology_trends' => $this->getTechnologyTrends()
-                ]
-            ]),
-            metadata: ['step' => 'trend_analysis'],
-            requiredCapabilities: ['trend_analysis', 'forecasting']
-        ));
-    }
-
-    private function conductBrainstorming(): array
-    {
-        $session = $this->broker->routeMessageAndWait(new AgentMessage(
-            senderId: $this->sessionId,
-            content: json_encode([
-                'task' => 'feature_brainstorming',
-                'context' => [
-                    'market_research' => $this->research->toArray(),
-                    'constraints' => $this->configuration['constraints']
-                ]
-            ]),
-            metadata: ['step' => 'brainstorming'],
-            requiredCapabilities: ['creative_thinking', 'innovation']
-        ));
-
-        $this->features = collect($session['features']);
-        return $session;
-    }
-
-    private function evaluateFeatures(): array
-    {
-        $evaluation = $this->broker->routeMessageAndWait(new AgentMessage(
-            senderId: $this->sessionId,
-            content: json_encode([
-                'task' => 'feature_evaluation',
-                'features' => $this->features->toArray(),
-                'context' => [
-                    'criteria' => $this->configuration['evaluation_criteria'],
-                    'constraints' => $this->configuration['constraints']
-                ]
-            ]),
-            metadata: ['step' => 'feature_evaluation'],
-            requiredCapabilities: ['feature_analysis', 'evaluation']
-        ));
-
-        $this->evaluations = collect($evaluation['evaluations']);
-        return $evaluation;
-    }
-
-    private function analyzeFeasibility(): array
-    {
-        return $this->broker->routeMessageAndWait(new AgentMessage(
-            senderId: $this->sessionId,
-            content: json_encode([
-                'task' => 'feasibility_analysis',
-                'features' => $this->features->toArray(),
-                'context' => [
+                    'features' => $this->features->toArray(),
                     'technical_constraints' => $this->configuration['technical_constraints'],
-                    'resource_constraints' => $this->configuration['resource_constraints']
+                    'system_capabilities' => $this->getSystemCapabilities()
                 ]
             ]),
-            metadata: ['step' => 'feasibility_analysis'],
-            requiredCapabilities: ['technical_analysis', 'resource_planning']
+            metadata: ['step' => 'technical_feasibility'],
+            requiredCapabilities: ['technical_analysis', 'feasibility_assessment']
+        ));
+    }
+
+    private function assessImpact(): array
+    {
+        $assessment = $this->broker->routeMessageAndWait(new AgentMessage(
+            senderId: $this->sessionId,
+            content: json_encode([
+                'task' => 'impact_assessment',
+                'context' => [
+                    'features' => $this->features->toArray(),
+                    'business_goals' => $this->configuration['business_goals'],
+                    'user_impact' => $this->getUserImpact()
+                ]
+            ]),
+            metadata: ['step' => 'impact_assessment'],
+            requiredCapabilities: ['impact_analysis', 'business_analysis']
+        ));
+
+        $this->analysis = collect($assessment['impact_analysis']);
+        return $assessment;
+    }
+
+    private function analyzeCosts(): array
+    {
+        return $this->broker->routeMessageAndWait(new AgentMessage(
+            senderId: $this->sessionId,
+            content: json_encode([
+                'task' => 'cost_analysis',
+                'context' => [
+                    'features' => $this->features->toArray(),
+                    'resource_costs' => $this->getResourceCosts(),
+                    'development_estimates' => $this->getDevelopmentEstimates()
+                ]
+            ]),
+            metadata: ['step' => 'cost_analysis'],
+            requiredCapabilities: ['cost_analysis', 'resource_planning']
+        ));
+    }
+
+    private function evaluateRisks(): array
+    {
+        return $this->broker->routeMessageAndWait(new AgentMessage(
+            senderId: $this->sessionId,
+            content: json_encode([
+                'task' => 'risk_evaluation',
+                'context' => [
+                    'features' => $this->features->toArray(),
+                    'risk_factors' => $this->getRiskFactors(),
+                    'mitigation_strategies' => $this->getMitigationStrategies()
+                ]
+            ]),
+            metadata: ['step' => 'risk_evaluation'],
+            requiredCapabilities: ['risk_analysis', 'mitigation_planning']
         ));
     }
 
     private function prioritizeFeatures(): array
     {
-        return $this->broker->routeMessageAndWait(new AgentMessage(
+        $prioritization = $this->broker->routeMessageAndWait(new AgentMessage(
             senderId: $this->sessionId,
             content: json_encode([
                 'task' => 'feature_prioritization',
-                'features' => $this->features->toArray(),
-                'evaluations' => $this->evaluations->toArray(),
                 'context' => [
-                    'business_goals' => $this->configuration['business_goals'],
-                    'timeline' => $this->configuration['timeline']
+                    'features' => $this->features->toArray(),
+                    'impact_analysis' => $this->analysis->toArray(),
+                    'business_priorities' => $this->configuration['business_priorities']
                 ]
             ]),
             metadata: ['step' => 'prioritization'],
-            requiredCapabilities: ['prioritization', 'strategic_planning']
+            requiredCapabilities: ['prioritization', 'decision_making']
         ));
+
+        $this->recommendations = collect($prioritization['recommendations']);
+        return $prioritization;
     }
 
     private function generateReport(): array
     {
         $report = [
             'summary' => $this->generateSummary(),
-            'features' => $this->features->toArray(),
-            'evaluations' => $this->evaluations->toArray(),
-            'research' => $this->research->toArray(),
-            'recommendations' => $this->generateRecommendations()
+            'feature_analysis' => $this->generateFeatureAnalysis(),
+            'feasibility_assessment' => $this->generateFeasibilityAssessment(),
+            'recommendations' => $this->generateRecommendations(),
+            'implementation_plan' => $this->generateImplementationPlan()
         ];
 
-        FeatureProposal::create([
+        FeatureReport::create([
             'session_id' => $this->sessionId,
             'content' => $report,
             'metadata' => [
-                'market' => $this->configuration['target_market'],
+                'project' => $this->configuration['project_name'],
                 'timestamp' => now(),
                 'version' => $this->configuration['version'] ?? '1.0.0'
             ]
@@ -253,70 +255,51 @@ class FeatureDiscoverySession extends BaseSession
     private function generateSummary(): array
     {
         return [
-            'total_features' => $this->features->count(),
-            'high_priority_features' => $this->countFeaturesByPriority('high'),
-            'medium_priority_features' => $this->countFeaturesByPriority('medium'),
-            'low_priority_features' => $this->countFeaturesByPriority('low'),
-            'feasibility_metrics' => $this->calculateFeasibilityMetrics(),
-            'impact_assessment' => $this->assessImpact(),
-            'resource_requirements' => $this->calculateResourceRequirements()
+            'discovered_features' => $this->summarizeFeatures(),
+            'market_insights' => $this->summarizeMarketInsights(),
+            'user_needs' => $this->summarizeUserNeeds(),
+            'key_opportunities' => $this->summarizeOpportunities(),
+            'critical_considerations' => $this->summarizeConsiderations()
+        ];
+    }
+
+    private function generateFeatureAnalysis(): array
+    {
+        return [
+            'feature_evaluation' => $this->evaluateFeatures(),
+            'impact_assessment' => $this->assessFeatureImpact(),
+            'competitive_analysis' => $this->analyzeCompetitivePosition(),
+            'market_fit' => $this->assessMarketFit()
+        ];
+    }
+
+    private function generateFeasibilityAssessment(): array
+    {
+        return [
+            'technical_assessment' => $this->assessTechnicalFeasibility(),
+            'resource_requirements' => $this->assessResourceRequirements(),
+            'implementation_complexity' => $this->assessImplementationComplexity(),
+            'risk_analysis' => $this->analyzeImplementationRisks()
         ];
     }
 
     private function generateRecommendations(): array
     {
         return [
-            'immediate_priorities' => $this->getImmediatePriorities(),
-            'future_considerations' => $this->getFutureConsiderations(),
-            'risk_mitigation' => $this->getRiskMitigation(),
-            'implementation_strategy' => $this->getImplementationStrategy()
+            'priority_features' => $this->recommendPriorityFeatures(),
+            'implementation_strategy' => $this->recommendImplementationStrategy(),
+            'resource_allocation' => $this->recommendResourceAllocation(),
+            'risk_mitigation' => $this->recommendRiskMitigation()
         ];
     }
 
-    private function countFeaturesByPriority(string $priority): int
-    {
-        return $this->evaluations
-            ->where('priority', $priority)
-            ->count();
-    }
-
-    private function calculateFeasibilityMetrics(): array
+    private function generateImplementationPlan(): array
     {
         return [
-            'technical_feasibility' => $this->calculateAverageFeasibility('technical'),
-            'resource_feasibility' => $this->calculateAverageFeasibility('resource'),
-            'timeline_feasibility' => $this->calculateAverageFeasibility('timeline')
-        ];
-    }
-
-    private function calculateAverageFeasibility(string $type): float
-    {
-        $scores = $this->evaluations->pluck("feasibility.{$type}");
-        return $scores->isNotEmpty() ? $scores->average() : 0.0;
-    }
-
-    private function assessImpact(): array
-    {
-        return [
-            'market_impact' => $this->calculateAverageImpact('market'),
-            'user_impact' => $this->calculateAverageImpact('user'),
-            'business_impact' => $this->calculateAverageImpact('business')
-        ];
-    }
-
-    private function calculateAverageImpact(string $type): float
-    {
-        $scores = $this->evaluations->pluck("impact.{$type}");
-        return $scores->isNotEmpty() ? $scores->average() : 0.0;
-    }
-
-    private function calculateResourceRequirements(): array
-    {
-        return [
-            'development_effort' => $this->estimateDevelopmentEffort(),
-            'timeline' => $this->estimateTimeline(),
-            'dependencies' => $this->identifyDependencies(),
-            'risks' => $this->assessRisks()
+            'phases' => $this->defineImplementationPhases(),
+            'timeline' => $this->createImplementationTimeline(),
+            'resource_planning' => $this->planResourceNeeds(),
+            'success_criteria' => $this->defineSuccessCriteria()
         ];
     }
 
@@ -346,27 +329,48 @@ class FeatureDiscoverySession extends BaseSession
         return $this->features;
     }
 
-    public function getEvaluations(): Collection
+    public function getAnalysis(): Collection
     {
-        return $this->evaluations;
+        return $this->analysis;
     }
 
-    public function getResearch(): Collection
+    public function getRecommendations(): Collection
     {
-        return $this->research;
+        return $this->recommendations;
     }
 
-    // Placeholder methods for data gathering - would be implemented based on specific data sources
-    private function getUserFeedback(): array { return []; }
-    private function getUsageData(): array { return []; }
+    // Placeholder methods for data gathering - would be implemented based on specific research and analysis tools
     private function getIndustryTrends(): array { return []; }
-    private function getTechnologyTrends(): array { return []; }
-    private function getImmediatePriorities(): array { return []; }
-    private function getFutureConsiderations(): array { return []; }
-    private function getRiskMitigation(): array { return []; }
-    private function getImplementationStrategy(): array { return []; }
-    private function estimateDevelopmentEffort(): array { return []; }
-    private function estimateTimeline(): array { return []; }
-    private function identifyDependencies(): array { return []; }
-    private function assessRisks(): array { return []; }
+    private function getMarketData(): array { return []; }
+    private function getUserFeedback(): array { return []; }
+    private function getUsagePatterns(): array { return []; }
+    private function getCompetitiveFeatures(): array { return []; }
+    private function getMarketPositioning(): array { return []; }
+    private function getSystemCapabilities(): array { return []; }
+    private function getUserImpact(): array { return []; }
+    private function getResourceCosts(): array { return []; }
+    private function getDevelopmentEstimates(): array { return []; }
+    private function getRiskFactors(): array { return []; }
+    private function getMitigationStrategies(): array { return []; }
+    private function summarizeFeatures(): array { return []; }
+    private function summarizeMarketInsights(): array { return []; }
+    private function summarizeUserNeeds(): array { return []; }
+    private function summarizeOpportunities(): array { return []; }
+    private function summarizeConsiderations(): array { return []; }
+    private function evaluateFeatures(): array { return []; }
+    private function assessFeatureImpact(): array { return []; }
+    private function analyzeCompetitivePosition(): array { return []; }
+    private function assessMarketFit(): array { return []; }
+    private function assessTechnicalFeasibility(): array { return []; }
+    private function assessResourceRequirements(): array { return []; }
+    private function assessImplementationComplexity(): array { return []; }
+    private function analyzeImplementationRisks(): array { return []; }
+    private function recommendPriorityFeatures(): array { return []; }
+    private function recommendImplementationStrategy(): array { return []; }
+    private function recommendResourceAllocation(): array { return []; }
+    private function recommendRiskMitigation(): array { return []; }
+    private function defineImplementationPhases(): array { return []; }
+    private function createImplementationTimeline(): array { return []; }
+    private function planResourceNeeds(): array { return []; }
+    private function defineSuccessCriteria(): array { return []; }
 }
